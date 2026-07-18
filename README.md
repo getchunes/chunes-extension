@@ -1,4 +1,4 @@
-# Chunes Helper
+# Chune ID
 
 Companion browser extension for [Chunes](https://github.com/getchunes/chunes),
 the app that shows your SoundCloud and YouTube Music listening as a Discord
