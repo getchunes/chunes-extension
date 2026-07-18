@@ -180,12 +180,10 @@ check(
 );
 
 const popupHtml = readFileSync(join(root, "popup.html"), "utf8");
-const scriptTags = [...popupHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
-check(scriptTags.length === 1, "popup.html must have exactly one script tag");
-for (const [, attributes, contents] of scriptTags) {
-  check(/\bsrc=["']popup\.js["']/i.test(attributes), "popup script must reference popup.js");
-  check(contents.trim() === "", "inline script is forbidden");
-}
+const expectedScriptTag = '<script src="popup.js" defer></script>';
+const scriptTagCount = popupHtml.toLowerCase().split("<script").length - 1;
+check(scriptTagCount === 1, "popup.html must have exactly one script tag");
+check(popupHtml.includes(expectedScriptTag), "popup must use only the packaged popup.js script");
 check(!/\son[a-z]+\s*=/i.test(popupHtml), "inline HTML event handlers are forbidden");
 check(!/<script[^>]+src=["']https?:/i.test(popupHtml), "remote scripts are forbidden");
 for (const id of [
