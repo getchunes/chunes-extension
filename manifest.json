@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Chunes Helper",
+  "name": "Chune ID",
   "version": "1.0.0",
   "description": "Tells the local Chunes presence app which site is playing audio, so it can ignore regular YouTube.",
   "permissions": ["tabs", "alarms"],
