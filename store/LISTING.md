@@ -44,6 +44,11 @@ send title/artist search terms to SoundCloud. See both privacy policies below.
 Requires the Chunes Windows companion app. Chunes is available from:
 https://github.com/getchunes/chunes/releases/latest
 
+The current Chunes v1.0.0 MSI is an explicitly labeled unsigned interim release
+while SignPath Foundation approval is pending, so Windows displays **Unknown
+publisher**. Its GitHub release, tag, and MSI are immutable. Desktop v1.0.1 is
+planned as the first SignPath Foundation-signed upgrade.
+
 ## Single-purpose statement
 
 Chune ID's single purpose is to identify supported audible browser tabs for
