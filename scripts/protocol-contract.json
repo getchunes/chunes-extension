@@ -1,0 +1,18 @@
+{
+  "endpoint": "http://127.0.0.1:52846/tabs",
+  "request": {
+    "contentType": "application/json",
+    "limits": {
+      "bodyBytes": 32768,
+      "tabs": 64,
+      "titleUnicodeCharacters": 512
+    },
+    "payloadKeys": ["enabled", "services", "tabs"],
+    "serviceKeys": ["soundcloud", "youtubeMusic"],
+    "tabKeys": ["host", "title"]
+  },
+  "response": {
+    "markerHeader": "X-Chunes-Protocol",
+    "markerValue": "1"
+  }
+}
