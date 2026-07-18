@@ -20,11 +20,11 @@ assert.deepEqual(protocolContract, {
     },
     payloadKeys: ["enabled", "services", "tabs"],
     serviceKeys: ["soundcloud", "youtubeMusic"],
-    tabKeys: ["host", "title"],
+    tabKeys: ["host", "mediaId", "title"],
   },
   response: {
     markerHeader: "X-Chunes-Protocol",
-    markerValue: "1",
+    markerValue: "2",
   },
 });
 const stored = {};
@@ -41,7 +41,7 @@ let queryResults = [
   },
   {
     title: "Artist - YouTube Music track",
-    url: "https://music.youtube.com/watch?v=example",
+    url: "https://music.youtube.com/watch?v=YtMusic1234",
   },
   {
     title: "Regular YouTube video",
@@ -196,7 +196,7 @@ const runtimeProtocolContract = normalize(
         },
         payloadKeys: ["enabled", "services", "tabs"],
         serviceKeys: ["soundcloud", "youtubeMusic"],
-        tabKeys: ["host", "title"],
+        tabKeys: ["host", "mediaId", "title"],
       },
       response: {
         markerHeader: RESPONSE_PROTOCOL_HEADER,
@@ -257,7 +257,7 @@ assert.deepEqual(normalize(posts[0].options.headers), {
 assert.equal(posts[0].options.redirect, "error", "loopback fetch must reject redirects");
 assert.equal(
   posts[0].options.body,
-  '{"enabled":true,"services":{"soundcloud":true,"youtubeMusic":true},"tabs":[{"host":"soundcloud.com","title":"Artist - SoundCloud track"},{"host":"music.youtube.com","title":"Artist - YouTube Music track"},{"host":"www.youtube.com","title":"Regular YouTube video"}]}',
+  '{"enabled":true,"services":{"soundcloud":true,"youtubeMusic":true},"tabs":[{"host":"soundcloud.com","mediaId":null,"title":"Artist - SoundCloud track"},{"host":"music.youtube.com","mediaId":"YtMusic1234","title":"Artist - YouTube Music track"},{"host":"www.youtube.com","mediaId":null,"title":"Regular YouTube video"}]}',
   "POST body must use the exact reviewed payload shape and protocol keys",
 );
 assert.deepEqual(Object.keys(lastPostBody()), protocolContract.request.payloadKeys);
@@ -284,9 +284,9 @@ fetchHandler = async () => createResponse({ protocol: null });
 const legacyDesktopRefresh = await sendRuntimeMessage({ type: "refresh" });
 assert.equal(legacyDesktopRefresh.status.connected, false);
 assert.equal(legacyDesktopRefresh.status.incompatible, true);
-assert.match(legacyDesktopRefresh.status.error, /protocol 1 response required/);
+assert.match(legacyDesktopRefresh.status.error, /protocol 2 response required/);
 
-fetchHandler = async () => createResponse({ protocol: "2" });
+fetchHandler = async () => createResponse({ protocol: "1" });
 const wrongProtocolRefresh = await sendRuntimeMessage({ type: "refresh" });
 assert.equal(wrongProtocolRefresh.status.connected, false);
 assert.equal(wrongProtocolRefresh.status.incompatible, true);
@@ -398,6 +398,11 @@ queryResults = [
 const youtubeMusicRefresh = await sendRuntimeMessage({ type: "refresh" });
 assert.equal(youtubeMusicRefresh.status.current.source, "YouTube Music");
 assert.equal(youtubeMusicRefresh.status.current.title, "YouTube Music title");
+assert.equal(
+  lastPostBody().tabs[0].mediaId,
+  null,
+  "malformed YouTube Music video IDs must not be reported",
+);
 
 queryResults = [
   {
@@ -515,7 +520,7 @@ assert.ok(
 );
 assert.equal(boundedBodyRefresh.status.omittedTabCount, 64 - boundedPayload.tabs.length);
 assert.equal(boundedBodyRefresh.status.truncatedTitleCount, boundedPayload.tabs.length);
-const firstOmittedTab = { host: "soundcloud.com", title: maximumTitle };
+const firstOmittedTab = { host: "soundcloud.com", mediaId: null, title: maximumTitle };
 assert.ok(
   Buffer.byteLength(
     JSON.stringify({ ...boundedPayload, tabs: [...boundedPayload.tabs, firstOmittedTab] }),

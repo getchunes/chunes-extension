@@ -81,11 +81,11 @@ if (protocolContract) {
           },
           payloadKeys: ["enabled", "services", "tabs"],
           serviceKeys: ["soundcloud", "youtubeMusic"],
-          tabKeys: ["host", "title"],
+          tabKeys: ["host", "mediaId", "title"],
         },
         response: {
           markerHeader: "X-Chunes-Protocol",
-          markerValue: "1",
+          markerValue: "2",
         },
       }),
     "scripts/protocol-contract.json must exactly match the reviewed protocol",
@@ -106,7 +106,7 @@ if (manifest) {
 
   check(manifest.manifest_version === 3, "manifest_version must be 3");
   check(manifest.name === "Chune ID", "manifest name must remain Chune ID");
-  check(manifest.version === "1.0.0", "manifest version must remain 1.0.0");
+  check(manifest.version === "1.0.1", "manifest version must remain 1.0.1");
   check(
     manifest.minimum_chrome_version === "120",
     "minimum_chrome_version must be 120 for 30-second alarms",
@@ -220,12 +220,16 @@ check(
   "YouTube Music switch must default to on",
 );
 check(popupHtml.includes("127.0.0.1"), "popup must contain the direct local endpoint disclosure");
-check(/>Privacy<\/a>/.test(popupHtml), "popup must link to privacy information");
+check(/>Chune ID privacy<\/a>/.test(popupHtml), "popup must label Chune ID privacy clearly");
 check(
   popupHtml.includes("https://github.com/getchunes/chunes/blob/main/PRIVACY.md"),
   "popup must link to the Chunes companion privacy policy",
 );
 check(/>Support<\/a>/.test(popupHtml), "popup must link to support");
+check(
+  /href=["']https:\/\/dubsector\.dev["'][^>]*>dubsector\.dev<\/a>/.test(popupHtml),
+  "popup must link to dubsector.dev",
+);
 
 for (const match of popupHtml.matchAll(/(?:src|href)=["']([^"']+)["']/gi)) {
   const reference = match[1];
@@ -246,8 +250,14 @@ check(
 );
 check(
   backgroundSource.includes('const RESPONSE_PROTOCOL_HEADER = "X-Chunes-Protocol";') &&
-    backgroundSource.includes('const RESPONSE_PROTOCOL_VERSION = "1";'),
+    backgroundSource.includes('const RESPONSE_PROTOCOL_VERSION = "2";'),
   "background must require the reviewed desktop response marker",
+);
+check(
+  backgroundSource.includes('url.searchParams.get("v")') &&
+    backgroundSource.includes('/^[A-Za-z0-9_-]{11}$/.test(candidateMediaId)') &&
+    backgroundSource.includes("mediaId: reportedTab.mediaId"),
+  "background must validate and report YouTube Music video IDs",
 );
 check(
   backgroundSource.includes('redirect: "error"'),
@@ -272,6 +282,10 @@ check(!/\beval\s*\(|\bnew Function\s*\(/.test(backgroundSource), "remote-code pr
 const popupSource = readFileSync(join(root, "popup.js"), "utf8");
 check(popupSource.includes('soundcloud: true'), "SoundCloud protocol default must remain true");
 check(popupSource.includes('youtubeMusic: true'), "YouTube Music protocol default must remain true");
+check(
+  popupSource.includes('elements.sourceMark.textContent = "YTM";'),
+  "YouTube Music source badge must use YTM",
+);
 check(popupSource.includes('"SoundCloud"'), "SoundCloud source label must remain exact");
 check(popupSource.includes('"YouTube Music"'), "YouTube Music source label must remain exact");
 check(
@@ -383,10 +397,12 @@ for (const marker of [
 }
 
 const privacyPolicy = readFileSync(join(root, "PRIVACY.md"), "utf8");
+const normalizedPrivacyPolicy = privacyPolicy.replace(/\s+/g, " ");
 check(
-  privacyPolicy.includes("sends listening presence to Discord") &&
-    privacyPolicy.includes("title and artist search") &&
-    privacyPolicy.includes("getchunes/chunes/blob/main/PRIVACY.md"),
+  normalizedPrivacyPolicy.includes("sends listening presence to Discord") &&
+    normalizedPrivacyPolicy.includes("searches SoundCloud with title and artist") &&
+    normalizedPrivacyPolicy.includes("video ID to YouTube Music's web metadata endpoint") &&
+    normalizedPrivacyPolicy.includes("getchunes/chunes/blob/main/PRIVACY.md"),
   "privacy policy must disclose downstream companion behavior and link its policy",
 );
 check(
@@ -409,26 +425,29 @@ check(
 );
 
 const dashboardChecklist = readFileSync(join(root, "store/DASHBOARD_CHECKLIST.md"), "utf8");
-const packageSha256 = "ea8f00cdc9fcc81fe20b2390730f506e24aa5c470a526fc12e55e6234b374315";
+const packageSha256 = "b7c1c577a92d3dbaf39e4ef2e98db9989a4b8db8fb284333702358eab0ff380c";
 check(
-  dashboardChecklist.includes("never been uploaded to the Chrome Web Store") &&
-    dashboardChecklist.includes("release is marked immutable") &&
-    dashboardChecklist.includes("chune-id-1.0.0.zip") &&
-    dashboardChecklist.includes(packageSha256) &&
-    dashboardChecklist.includes("UNSIGNED INTERIM - UNKNOWN PUBLISHER") &&
-    !dashboardChecklist.includes("Delete the existing zero-download") &&
-    !dashboardChecklist.includes("recreate the `v1.0.0` tag"),
-  "dashboard checklist must preserve the approved version 1.0.0 release coordination",
+  dashboardChecklist.includes("previously submitted Chrome Web Store version 1.0.0") &&
+    dashboardChecklist.includes("chune-id-1.0.1.zip") &&
+    dashboardChecklist.includes("version 1.0.1") &&
+    dashboardChecklist.includes("protocol 2") &&
+    dashboardChecklist.includes("signed or unsigned manual-only") &&
+    dashboardChecklist.includes(packageSha256),
+  "dashboard checklist must describe the version 1.0.1 update coordination",
 );
 
 const submission = readFileSync(join(root, "store/SUBMISSION.md"), "utf8");
 const reviewerNotes = readFileSync(join(root, "store/REVIEWER_NOTES.md"), "utf8");
+const normalizedSubmission = submission.replace(/\s+/g, " ");
+const normalizedReviewerNotes = reviewerNotes.replace(/\s+/g, " ");
 check(
-  submission.includes(packageSha256) &&
-    submission.includes("unsigned interim MSI") &&
-    reviewerNotes.includes("Unknown publisher") &&
-    reviewerNotes.includes("release, tag, and sole MSI are immutable"),
-  "submission material must disclose immutable artifacts and the unsigned interim companion",
+  normalizedSubmission.includes("Version 1.0.0 has already been submitted") &&
+    normalizedSubmission.includes("separate 1.0.1 update") &&
+    normalizedSubmission.includes(packageSha256) &&
+    normalizedSubmission.includes("immutable unsigned manual prerelease") &&
+    normalizedReviewerNotes.includes("Unknown publisher") &&
+    normalizedReviewerNotes.includes("release, tag, and sole MSI is immutable"),
+  "submission material must disclose versioned artifacts and companion trust",
 );
 
 if (errors.length > 0) {

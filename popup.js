@@ -91,7 +91,7 @@ function renderCurrent(status) {
     elements.sourceMark.textContent = "SC";
   } else if (status.current.source === "YouTube Music") {
     elements.sourceMark.classList.add("youtube");
-    elements.sourceMark.textContent = "YM";
+    elements.sourceMark.textContent = "YTM";
   }
 
   if (status.current.publishEnabled === false) {
@@ -205,14 +205,14 @@ if (globalThis.chrome?.runtime?.sendMessage) {
   });
   void refresh();
 } else {
-  // Direct-file rendering mirrors a successful protocol-1 status for store capture.
+  // Direct-file rendering mirrors a successful protocol-2 status for store capture.
   renderStatus({
     connected: true,
     current: {
-      host: "soundcloud.com",
+      host: "music.youtube.com",
       publishEnabled: true,
-      source: "SoundCloud",
-      title: "Example Artist - Example Track | SoundCloud",
+      source: "YouTube Music",
+      title: "Example Track - Example Artist - YouTube Music",
     },
     error: null,
     incompatible: false,

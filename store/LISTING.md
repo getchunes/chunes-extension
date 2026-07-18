@@ -16,7 +16,9 @@ shows supported listening as Discord presence.
 Windows can tell Chunes that a browser is playing audio, but not which site is
 responsible. Chune ID closes that local information gap. It identifies audible
 SoundCloud, YouTube Music, and regular YouTube tabs and sends only their
-hostname and tab title to the Chunes app running on your computer.
+hostname and tab title to the Chunes app running on your computer. For YouTube
+Music, it also sends the public video ID so Chunes can request exact album art.
+It never sends a full tab URL.
 
 With Chune ID, Chunes can:
 
@@ -33,21 +35,22 @@ The popup shows whether Chunes desktop is connected, the current supported
 audible source and title, and the last local check. The master, SoundCloud, and
 YouTube Music controls are on by default and are stored only in the local
 browser profile. Service switches control what Chunes may publish; matching
-host/title data still goes to local Chunes for suppression. Turning off the
-master switch is the only way to stop tab queries and title reporting.
+track data still goes to local Chunes for suppression. Turning off the master
+switch is the only way to stop tab queries and track reporting.
 
 Chune ID has no analytics, ads, accounts, or remote code. The extension itself
 directly contacts only Chunes at 127.0.0.1:52846. For enabled services, Chunes
 sends presence to Discord and may, under optional companion artwork controls,
-send title/artist search terms to SoundCloud. See both privacy policies below.
+search SoundCloud with title/artist or request exact album art from YouTube
+Music using its public video ID. See both privacy policies below.
 
 Requires the Chunes Windows companion app. Chunes is available from:
-https://github.com/getchunes/chunes/releases/latest
+https://github.com/getchunes/chunes/releases/tag/v1.0.1
 
-The current Chunes v1.0.0 MSI is an explicitly labeled unsigned interim release
-while SignPath Foundation approval is pending, so Windows displays **Unknown
-publisher**. Its GitHub release, tag, and MSI are immutable. Desktop v1.0.1 is
-planned as the first SignPath Foundation-signed upgrade.
+Check the selected Chunes release's trust notice before installation. Signed
+stable releases are eligible for automatic updates. If signing is unavailable,
+an unsigned release may be offered as an immutable manual-only prerelease and
+Windows will display **Unknown publisher**.
 
 ## Single-purpose statement
 
@@ -65,7 +68,7 @@ presence and suppress regular YouTube audio.
 - Privacy policy: https://github.com/getchunes/chunes-extension/blob/main/PRIVACY.md
 - Companion privacy: https://github.com/getchunes/chunes/blob/main/PRIVACY.md
 - Support: https://github.com/getchunes/chunes-extension/issues
-- Companion app: https://github.com/getchunes/chunes/releases/latest
+- Companion app: https://github.com/getchunes/chunes/releases/tag/v1.0.1
 
 ## Assets
 
