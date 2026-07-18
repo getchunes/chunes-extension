@@ -5,8 +5,8 @@ the Windows app that shows supported music listening as Discord presence.
 
 Windows only tells Chunes that "your browser is playing something", never
 which site. Chune ID fills that gap by checking audible SoundCloud and YouTube
-tabs and reporting their hostname and title to the Chunes app on this computer
-at `127.0.0.1:52846`.
+tabs and reporting their hostname, title, and optional YouTube Music video ID
+to the Chunes app on this computer at `127.0.0.1:52846`.
 
 With it installed, Chunes can:
 
@@ -21,25 +21,25 @@ extension does not guarantee correct attribution in those cases.
 ## Requirements
 
 - Google Chrome 120 or a compatible Chromium browser with Manifest V3 support
-- Windows with the [Chunes desktop app](https://github.com/getchunes/chunes/releases/latest) running for presence reporting
+- Windows with [Chunes desktop 1.0.1](https://github.com/getchunes/chunes/releases/tag/v1.0.1) running for protocol-2 presence reporting
 
 ## Install
 
-Chrome Web Store publication is pending review and upload.
+Chrome Web Store version 1.0.0 has been submitted. This repository now targets
+the 1.0.1 update.
 
 To load the extension manually:
 
-1. Install Chunes using the MSI from the [latest Chunes release](https://github.com/getchunes/chunes/releases/latest).
+1. Install Chunes 1.0.1 using the MSI from its [matching release](https://github.com/getchunes/chunes/releases/tag/v1.0.1).
 2. Clone this repository.
 3. Open `chrome://extensions` (or `brave://extensions`).
 4. Enable Developer mode, choose **Load unpacked**, and select this repository's root folder.
 5. Pin Chune ID and click its toolbar icon to view connection and source status.
 
-Chunes desktop v1.0.0 is an explicitly labeled unsigned interim release while
-SignPath Foundation approval is pending, so Windows displays **Unknown
-publisher**. Its GitHub release, tag, and sole MSI are immutable. Obtain it only
-from the linked release and verify the SHA-256 shown in its release notes.
-Desktop v1.0.1 is planned as the first SignPath Foundation-signed upgrade.
+Check the selected Chunes release's trust notice before installation. Signed
+stable releases use the automatic-update channel. If signing is unavailable,
+an unsigned version may be published as an immutable manual-only prerelease and
+Windows will display **Unknown publisher**.
 
 ## Settings
 
@@ -53,7 +53,8 @@ on by default:
 The service switches control publishing, not local classification. Disabled
 services still have their matching host and title sent to local Chunes so it
 can suppress them instead of treating their audio as an unknown browser
-source. Only the master switch stops tab queries and title reporting. Regular
+source. YouTube Music reports also include its public video ID for exact album
+art. Only the master switch stops tab queries and track reporting. Regular
 YouTube is always classified as blocked, independently of the YouTube Music
 setting.
 
@@ -73,6 +74,7 @@ refreshes, browser startup/installation, and a 30-second alarm. It sends an
   "tabs": [
     {
       "host": "soundcloud.com",
+      "mediaId": null,
       "title": "Example track title"
     }
   ]
@@ -82,20 +84,21 @@ refreshes, browser startup/installation, and a 30-second alarm. It sends an
 When the master switch is off, the worker skips `chrome.tabs.query` and sends
 the same object with `enabled: false` and `tabs: []` as a paused heartbeat.
 Reports contain at most 64 tabs, titles are limited to 512 Unicode characters,
-and the serialized UTF-8 body never exceeds 32 KiB. Enabled publishable tabs
+YouTube Music video IDs must be exactly 11 valid ID characters, and the
+serialized UTF-8 body never exceeds 32 KiB. Enabled publishable tabs
 are considered first, disabled supported services second, and blocked regular
 YouTube last. A tab that does not fit is skipped so a later smaller tab can
 still be included; the popup reports omitted-tab and truncated-title counts.
 
 Chune ID shows the companion as connected only when a successful response
-contains `X-Chunes-Protocol: 1`. A response without that marker is treated as
+contains `X-Chunes-Protocol: 2`. A response without that marker is treated as
 an incompatible desktop version.
 
 ## Permissions
 
 - `alarms` keeps desktop classification current while the popup is closed.
 - `storage` saves only the three local boolean settings.
-- Narrow host access for `127.0.0.1`, SoundCloud, and YouTube lets the worker contact Chunes and read URL/title only for supported audible hosts.
+- Narrow host access for `127.0.0.1`, SoundCloud, and YouTube lets the worker contact Chunes and read URL/title only for supported audible hosts. The worker derives a public video ID from a YouTube Music watch URL but never reports a full URL.
 
 Chune ID does not request the broad `tabs` permission, inject content scripts,
 or run remote code.
@@ -104,10 +107,11 @@ or run remote code.
 
 Chune ID has no analytics, ads, or remote code. The extension itself directly
 contacts only Chunes over the HTTP loopback address: it reads audible matching
-tabs, reduces each URL to a hostname, and sends the hostname and title locally.
-For enabled services, the Chunes companion sends presence to Discord and may,
-under its optional artwork controls, send title/artist search terms to
-SoundCloud. See the [Chune ID Privacy Policy](PRIVACY.md) and the
+tabs, reduces each URL to a hostname and optional YouTube Music video ID, and
+sends that information with the title locally. For enabled sources, Chunes
+sends presence to Discord and may request optional album art from the matching
+SoundCloud or YouTube Music service. See the
+[Chune ID Privacy Policy](PRIVACY.md) and the
 [Chunes companion Privacy Policy](https://github.com/getchunes/chunes/blob/main/PRIVACY.md).
 
 ## Validate and package
@@ -121,7 +125,7 @@ The release scripts require only Node.js and Windows PowerShell 5.1 or newer:
 ```
 
 Packaging reads the manifest version and creates
-`dist/chune-id-1.0.0.zip`. The archive is built from an explicit allowlist;
+`dist/chune-id-1.0.1.zip`. The archive is built from an explicit allowlist;
 store materials, source archives, CI files, and development scripts are not
 included.
 

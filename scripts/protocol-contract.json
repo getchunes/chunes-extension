@@ -9,10 +9,10 @@
     },
     "payloadKeys": ["enabled", "services", "tabs"],
     "serviceKeys": ["soundcloud", "youtubeMusic"],
-    "tabKeys": ["host", "title"]
+    "tabKeys": ["host", "mediaId", "title"]
   },
   "response": {
     "markerHeader": "X-Chunes-Protocol",
-    "markerValue": "1"
+    "markerValue": "2"
   }
 }

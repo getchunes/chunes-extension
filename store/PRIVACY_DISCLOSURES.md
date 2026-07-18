@@ -8,7 +8,7 @@ presence and suppress regular YouTube audio.
 
 ## Data Categories
 
-- Web history: **Yes**. Chune ID transiently handles the hostname of a currently audible tab on a declared SoundCloud or YouTube host. It does not read or collect general browsing history or send full URLs.
+- Web history: **Yes**. Chune ID transiently handles the hostname of a currently audible tab on a declared SoundCloud or YouTube host and the public video ID of a YouTube Music watch page. It does not read or collect general browsing history or send full URLs.
 - Website content: **Yes**. Chune ID transiently handles the title of a currently audible matching tab; a title can contain a track, artist, or video title.
 - Personally identifiable information: **No**.
 - Health information: **No**.
@@ -27,18 +27,21 @@ presence and suppress regular YouTube audio.
 
 ## Transfer, Storage, and Retention
 
-The extension itself directly sends matching tab hostnames and titles only to
-the locally installed Chunes app using HTTP loopback at `127.0.0.1:52846`; it
-does not send them to the developer or persist them. For services enabled by
-the user, Chunes sends listening presence to Discord. If optional artwork
-behavior is enabled under companion controls, Chunes may send title and artist
-search terms to SoundCloud to find artwork. Those downstream requests are made
-by Chunes and are covered by the companion privacy policy. Three boolean
-extension settings persist only in `chrome.storage.local` until changed,
-browser storage is cleared, or the extension is removed.
+The extension itself directly sends matching tab hostnames, titles, and a
+validated YouTube Music video ID only to the locally installed Chunes app using
+HTTP loopback at `127.0.0.1:52846`; it does not send them to the developer or
+persist them. For enabled sources, Chunes sends listening presence to Discord.
+If optional album-art behavior is enabled, Chunes searches SoundCloud with
+title/artist for SoundCloud tracks or sends the public video ID to YouTube
+Music's web metadata endpoint for exact square music artwork. Those downstream
+requests are made by Chunes and are covered by the companion privacy policy.
+Three boolean extension settings persist only in
+`chrome.storage.local` until changed, browser storage is cleared, or the
+extension is removed.
 
 Each loopback report is limited to 64 tabs, 512 Unicode characters per title,
-and a 32 KiB serialized UTF-8 body. Enabled supported services are considered
+validated 11-character YouTube Music video IDs, and a 32 KiB serialized UTF-8
+body. Enabled supported services are considered
 before disabled supported services and blocked regular YouTube. Tabs that do
 not fit are omitted; the popup reports omitted-tab and truncated-title counts.
 

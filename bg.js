@@ -6,7 +6,7 @@ const REPORT_PERIOD_MINUTES = 0.5;
 const REQUEST_TIMEOUT_MS = 3000;
 const REQUEST_CONTENT_TYPE = "application/json";
 const RESPONSE_PROTOCOL_HEADER = "X-Chunes-Protocol";
-const RESPONSE_PROTOCOL_VERSION = "1";
+const RESPONSE_PROTOCOL_VERSION = "2";
 const MAX_REPORTED_TABS = 64;
 const MAX_TITLE_CHARACTERS = 512;
 const MAX_REQUEST_BYTES = 32 * 1024;
@@ -119,15 +119,29 @@ async function queryClassifiedAudibleTabs() {
 
   return browserTabs.flatMap((tab) => {
     try {
-      const host = new URL(tab.url).hostname.toLowerCase();
+      const url = new URL(tab.url);
+      const host = url.hostname.toLowerCase();
       const source = classifyHost(host);
 
       if (!source) {
         return [];
       }
 
+      const candidateMediaId =
+        source === "YouTube Music" ? url.searchParams.get("v") : null;
+      const mediaId =
+        typeof candidateMediaId === "string" &&
+        /^[A-Za-z0-9_-]{11}$/.test(candidateMediaId)
+          ? candidateMediaId
+          : null;
+
       return [
-        { host, source, title: typeof tab.title === "string" ? tab.title : "" },
+        {
+          host,
+          mediaId,
+          source,
+          title: typeof tab.title === "string" ? tab.title : "",
+        },
       ];
     } catch {
       return [];
@@ -192,7 +206,11 @@ function buildReport(settings, classifiedTabs) {
 
     const truncatedTitle = truncateTitle(tab.title);
     const reportedTab = { ...tab, title: truncatedTitle.title };
-    payload.tabs.push({ host: reportedTab.host, title: reportedTab.title });
+    payload.tabs.push({
+      host: reportedTab.host,
+      mediaId: reportedTab.mediaId,
+      title: reportedTab.title,
+    });
     const candidateBody = JSON.stringify(payload);
 
     if (textEncoder.encode(candidateBody).byteLength > MAX_REQUEST_BYTES) {
@@ -234,7 +252,7 @@ async function postReport(body) {
       throw new Error(`Chunes returned HTTP ${response.status}.`);
     }
     if (response.headers.get(RESPONSE_PROTOCOL_HEADER) !== RESPONSE_PROTOCOL_VERSION) {
-      const error = new Error("Chunes desktop is incompatible (protocol 1 response required).");
+      const error = new Error("Chunes desktop is incompatible (protocol 2 response required).");
       error.name = "ChunesProtocolError";
       throw error;
     }
