@@ -32,8 +32,16 @@ terms to SoundCloud. Use both public policies in the dashboard:
 
 ## Release Coordination
 
-Version 1.0.0 is intentionally retained because it has not been uploaded to the
-Chrome Web Store and the existing GitHub release has zero downloads. Before
-publishing corrected artifacts, a maintainer must delete the old GitHub
-`v1.0.0` release and tag, then recreate both from the corrected release commit.
-No script in this repository performs those GitHub operations.
+Version 1.0.0 has not been uploaded to the Chrome Web Store. Its corrected
+GitHub release is published once from the reviewed release commit with release
+immutability enabled. The release must contain only `chune-id-1.0.0.zip` with
+SHA-256
+`ea8f00cdc9fcc81fe20b2390730f506e24aa5c470a526fc12e55e6234b374315`.
+The published tag and asset are never replaced; future corrections use a new
+version.
+
+The current Chunes desktop v1.0.0 companion is a separately immutable,
+explicitly labeled unsigned interim MSI while SignPath Foundation approval is
+pending. Chrome reviewers should expect Windows to display **Unknown
+publisher** for that companion version. Desktop v1.0.1 is planned as the first
+SignPath Foundation-signed upgrade.

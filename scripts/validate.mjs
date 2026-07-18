@@ -409,11 +409,26 @@ check(
 );
 
 const dashboardChecklist = readFileSync(join(root, "store/DASHBOARD_CHECKLIST.md"), "utf8");
+const packageSha256 = "ea8f00cdc9fcc81fe20b2390730f506e24aa5c470a526fc12e55e6234b374315";
 check(
   dashboardChecklist.includes("never been uploaded to the Chrome Web Store") &&
-    dashboardChecklist.includes("Delete the existing zero-download GitHub `v1.0.0` release") &&
-    dashboardChecklist.includes("recreate the `v1.0.0` tag and GitHub release"),
+    dashboardChecklist.includes("release is marked immutable") &&
+    dashboardChecklist.includes("chune-id-1.0.0.zip") &&
+    dashboardChecklist.includes(packageSha256) &&
+    dashboardChecklist.includes("UNSIGNED INTERIM - UNKNOWN PUBLISHER") &&
+    !dashboardChecklist.includes("Delete the existing zero-download") &&
+    !dashboardChecklist.includes("recreate the `v1.0.0` tag"),
   "dashboard checklist must preserve the approved version 1.0.0 release coordination",
+);
+
+const submission = readFileSync(join(root, "store/SUBMISSION.md"), "utf8");
+const reviewerNotes = readFileSync(join(root, "store/REVIEWER_NOTES.md"), "utf8");
+check(
+  submission.includes(packageSha256) &&
+    submission.includes("unsigned interim MSI") &&
+    reviewerNotes.includes("Unknown publisher") &&
+    reviewerNotes.includes("release, tag, and sole MSI are immutable"),
+  "submission material must disclose immutable artifacts and the unsigned interim companion",
 );
 
 if (errors.length > 0) {

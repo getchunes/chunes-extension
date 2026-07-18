@@ -35,6 +35,12 @@ To load the extension manually:
 4. Enable Developer mode, choose **Load unpacked**, and select this repository's root folder.
 5. Pin Chune ID and click its toolbar icon to view connection and source status.
 
+Chunes desktop v1.0.0 is an explicitly labeled unsigned interim release while
+SignPath Foundation approval is pending, so Windows displays **Unknown
+publisher**. Its GitHub release, tag, and sole MSI are immutable. Obtain it only
+from the linked release and verify the SHA-256 shown in its release notes.
+Desktop v1.0.1 is planned as the first SignPath Foundation-signed upgrade.
+
 ## Settings
 
 The popup stores these settings only in `chrome.storage.local`. All three are
