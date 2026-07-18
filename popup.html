@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chune ID</title>
+    <link rel="stylesheet" href="popup.css">
+    <script src="popup.js" defer></script>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="brand-row">
+        <img class="brand-icon" src="icons/icon-48.png" alt="">
+        <div>
+          <p class="eyebrow">Chunes companion</p>
+          <h1>Chune ID</h1>
+        </div>
+      </div>
+      <div class="connection" id="connection" aria-live="polite">
+        <span class="connection-dot" aria-hidden="true"></span>
+        <span id="connection-text">Checking for Chunes...</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="now-card" aria-labelledby="now-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow dark">Audible source</p>
+            <h2 id="now-heading">Now identified</h2>
+          </div>
+          <button class="refresh-button" id="refresh" type="button">
+            <span class="refresh-symbol" aria-hidden="true">&#8635;</span>
+            Refresh
+          </button>
+        </div>
+        <div class="track-row">
+          <div class="source-mark" id="source-mark" aria-hidden="true">--</div>
+          <div class="track-copy">
+            <p class="source-name" id="source-name">Checking audible tabs...</p>
+            <p class="track-title" id="track-title">Waiting for the first local check.</p>
+          </div>
+        </div>
+        <p class="update-note" id="update-note" aria-live="polite">Starting local check...</p>
+      </section>
+
+      <section class="settings" aria-labelledby="settings-heading">
+        <div class="settings-intro">
+          <div>
+            <p class="eyebrow dark">Identification</p>
+            <h2 id="settings-heading">Choose what Chunes may publish</h2>
+          </div>
+          <span class="local-badge">Settings local</span>
+        </div>
+
+        <div class="setting master-setting">
+            <div class="setting-copy">
+              <label for="enabled">Chune ID enabled</label>
+              <p>Off stops tab checks and title reporting.</p>
+          </div>
+          <input class="switch" id="enabled" data-setting="enabled" type="checkbox" checked>
+        </div>
+
+        <p class="classification-note"><strong>Service switches only control publishing.</strong> Matching host/title still go to local Chunes for suppression. Only turning off Chune ID stops tab queries and titles.</p>
+
+        <div class="service-list">
+          <div class="setting">
+            <div class="service-identity">
+              <span class="service-dot soundcloud" aria-hidden="true"></span>
+              <div class="setting-copy">
+                <label for="soundcloud">SoundCloud</label>
+                <p>Allow Chunes to publish presence.</p>
+              </div>
+            </div>
+            <input class="switch" id="soundcloud" data-setting="soundcloud" type="checkbox" checked>
+          </div>
+
+          <div class="setting">
+            <div class="service-identity">
+              <span class="service-dot youtube" aria-hidden="true"></span>
+              <div class="setting-copy">
+                <label for="youtube-music">YouTube Music</label>
+                <p>Allow Chunes to publish presence.</p>
+              </div>
+            </div>
+            <input class="switch" id="youtube-music" data-setting="youtubeMusic" type="checkbox" checked>
+          </div>
+        </div>
+      </section>
+
+      <aside class="privacy-note">
+        <span class="info-mark" aria-hidden="true">i</span>
+        <p>Chune ID directly sends host/title only to local Chunes at <code>127.0.0.1</code>. Under companion controls, Chunes publishes enabled presence to Discord and may query SoundCloud with title/artist for optional artwork.</p>
+      </aside>
+    </main>
+
+    <footer>
+      <a href="https://github.com/getchunes/chunes-extension/blob/main/PRIVACY.md" target="_blank" rel="noreferrer">Privacy</a>
+      <span aria-hidden="true">&middot;</span>
+      <a href="https://github.com/getchunes/chunes/blob/main/PRIVACY.md" target="_blank" rel="noreferrer">Chunes privacy</a>
+      <span aria-hidden="true">&middot;</span>
+      <a href="https://github.com/getchunes/chunes-extension/issues" target="_blank" rel="noreferrer">Support</a>
+      <span class="version">v1.0.0</span>
+    </footer>
+  </body>
+</html>

@@ -2,8 +2,33 @@
   "manifest_version": 3,
   "name": "Chune ID",
   "version": "1.0.0",
-  "description": "Tells the local Chunes presence app which site is playing audio, so it can ignore regular YouTube.",
-  "permissions": ["tabs", "alarms"],
-  "host_permissions": ["http://127.0.0.1/*"],
-  "background": { "service_worker": "bg.js" }
+  "minimum_chrome_version": "120",
+  "description": "Identifies supported audible tabs for the Chunes desktop app on this computer.",
+  "permissions": ["alarms", "storage"],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "https://soundcloud.com/*",
+    "https://www.soundcloud.com/*",
+    "https://youtube.com/*",
+    "https://www.youtube.com/*",
+    "https://m.youtube.com/*",
+    "https://music.youtube.com/*"
+  ],
+  "background": {
+    "service_worker": "bg.js"
+  },
+  "action": {
+    "default_title": "Open Chune ID",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/action-16.png",
+      "32": "icons/action-32.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
 }

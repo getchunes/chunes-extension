@@ -1,0 +1,16 @@
+[
+  "LICENSE",
+  "PRIVACY.md",
+  "THIRD_PARTY_NOTICES.md",
+  "bg.js",
+  "icons/action-16.png",
+  "icons/action-32.png",
+  "icons/icon-16.png",
+  "icons/icon-32.png",
+  "icons/icon-48.png",
+  "icons/icon-128.png",
+  "manifest.json",
+  "popup.css",
+  "popup.html",
+  "popup.js"
+]
