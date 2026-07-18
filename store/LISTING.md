@@ -48,9 +48,8 @@ Requires the Chunes Windows companion app. Chunes is available from:
 https://github.com/getchunes/chunes/releases/tag/v1.0.1
 
 Check the selected Chunes release's trust notice before installation. Signed
-stable releases are eligible for automatic updates. If signing is unavailable,
-an unsigned release may be offered as an immutable manual-only prerelease and
-Windows will display **Unknown publisher**.
+releases identify their publisher. An unsigned manual release displays
+**Unknown publisher** and should be installed only after its hash is verified.
 
 ## Single-purpose statement
 

@@ -26,7 +26,7 @@ extension does not guarantee correct attribution in those cases.
 ## Install
 
 Chrome Web Store version 1.0.0 has been submitted. This repository now targets
-the 1.0.1 update.
+the 1.0.2 update.
 
 To load the extension manually:
 
@@ -37,9 +37,8 @@ To load the extension manually:
 5. Pin Chune ID and click its toolbar icon to view connection and source status.
 
 Check the selected Chunes release's trust notice before installation. Signed
-stable releases use the automatic-update channel. If signing is unavailable,
-an unsigned version may be published as an immutable manual-only prerelease and
-Windows will display **Unknown publisher**.
+releases identify their publisher. An unsigned manual release displays
+**Unknown publisher** and should be installed only after its hash is verified.
 
 ## Settings
 
@@ -125,7 +124,7 @@ The release scripts require only Node.js and Windows PowerShell 5.1 or newer:
 ```
 
 Packaging reads the manifest version and creates
-`dist/chune-id-1.0.1.zip`. The archive is built from an explicit allowlist;
+`dist/chune-id-1.0.2.zip`. The archive is built from an explicit allowlist;
 store materials, source archives, CI files, and development scripts are not
 included.
 

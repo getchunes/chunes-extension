@@ -11,7 +11,7 @@ copy:
 
 ## Reviewed Runtime Contract
 
-- Manifest V3, version 1.0.1, minimum Chrome version 120
+- Manifest V3, version 1.0.2, minimum Chrome version 120
 - Permissions limited to `alarms`, `storage`, loopback, SoundCloud, and YouTube hosts
 - `application/json` POSTs to `http://127.0.0.1:52846/tabs`
 - Exact top-level payload keys: `enabled`, `services`, and `tabs`
@@ -34,12 +34,12 @@ using its public video ID. Use both public policies in the dashboard:
 
 ## Release Coordination
 
-Version 1.0.0 has already been submitted to the Chrome Web Store and remains
-unchanged. This submission is the separate 1.0.1 update and must use a newly
-built `chune-id-1.0.1.zip` with SHA-256
-`b7c1c577a92d3dbaf39e4ef2e98db9989a4b8db8fb284333702358eab0ff380c`.
+Version 1.0.0 has already been submitted to the Chrome Web Store. The immutable
+1.0.0 and 1.0.1 GitHub artifacts remain unchanged. This submission is the
+separate 1.0.2 popup-fit update and must use a newly built
+`chune-id-1.0.2.zip` with SHA-256
+`e573bf2182cf2198a9b5335f2036e1dd02df3fb5f2383ef7164e51692680a078`.
 
 Chunes desktop 1.0.1 is the matching protocol-2 companion. Its release-specific
-notice states whether the MSI is signed or is an immutable unsigned manual
-prerelease. Chrome reviewers should expect **Unknown publisher** only for an
-explicitly labeled unsigned companion build.
+notice labels the immutable MSI as an unsigned manual release. Chrome reviewers
+should expect **Unknown publisher** for that explicitly labeled companion build.
