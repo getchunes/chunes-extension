@@ -37,13 +37,31 @@ $AllowlistDocument = [IO.File]::ReadAllText($AllowlistPath) | ConvertFrom-Json
 $ExpectedEntries = @(foreach ($Item in $AllowlistDocument) { [string]$Item })
 [Array]::Sort($ExpectedEntries, [StringComparer]::Ordinal)
 
-function Get-StreamSha256 {
-    param([IO.Stream]$Stream)
+$Utf8NoBom = New-Object Text.UTF8Encoding($false, $true)
+
+function Get-PackageBytes {
+    param([string]$Path)
+
+    $Bytes = [IO.File]::ReadAllBytes($Path)
+    if ([IO.Path]::GetExtension($Path) -ceq ".png") {
+        return ,$Bytes
+    }
+
+    $Text = $Utf8NoBom.GetString($Bytes)
+    if ($Text.Length -gt 0 -and $Text[0] -eq [char]0xfeff) {
+        $Text = $Text.Substring(1)
+    }
+    $Text = $Text.Replace("`r`n", "`n").Replace("`r", "`n")
+    return ,$Utf8NoBom.GetBytes($Text)
+}
+
+function Get-BytesSha256 {
+    param([byte[]]$Bytes)
 
     $Algorithm = [Security.Cryptography.SHA256]::Create()
     try {
-        $Bytes = $Algorithm.ComputeHash($Stream)
-        return ([BitConverter]::ToString($Bytes)).Replace("-", "").ToLowerInvariant()
+        $HashBytes = $Algorithm.ComputeHash($Bytes)
+        return ([BitConverter]::ToString($HashBytes)).Replace("-", "").ToLowerInvariant()
     }
     finally {
         $Algorithm.Dispose()
@@ -127,17 +145,31 @@ try {
         }
 
         $ArchivedStream = $Entry.Open()
+        $ArchivedMemory = $null
         try {
-            $ArchivedHash = Get-StreamSha256 $ArchivedStream
+            $ArchivedMemory = New-Object IO.MemoryStream
+            $ArchivedStream.CopyTo($ArchivedMemory)
+            $ArchivedBytes = $ArchivedMemory.ToArray()
         }
         finally {
+            if ($null -ne $ArchivedMemory) {
+                $ArchivedMemory.Dispose()
+            }
             $ArchivedStream.Dispose()
         }
 
+        if (
+            [IO.Path]::GetExtension($Entry.FullName) -cne ".png" -and
+            $ArchivedBytes -contains [byte]13
+        ) {
+            throw "Package text entry does not use canonical LF line endings: $($Entry.FullName)"
+        }
+        $ArchivedHash = Get-BytesSha256 $ArchivedBytes
+
         $SourcePath = Join-Path $Root ($Entry.FullName.Replace('/', [IO.Path]::DirectorySeparatorChar))
-        $SourceHash = (Get-FileHash -LiteralPath $SourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        $SourceHash = Get-BytesSha256 (Get-PackageBytes $SourcePath)
         if ($ArchivedHash -cne $SourceHash) {
-            throw "Package entry differs from the current source: $($Entry.FullName)"
+            throw "Package entry differs from the canonical current source: $($Entry.FullName)"
         }
     }
 
