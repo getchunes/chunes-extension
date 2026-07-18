@@ -21,6 +21,25 @@ if ($Allowlist.Count -eq 0) {
     throw "The package allowlist is empty."
 }
 
+$Utf8NoBom = New-Object Text.UTF8Encoding($false, $true)
+
+function Get-PackageBytes {
+    param([string]$Path)
+
+    $Bytes = [IO.File]::ReadAllBytes($Path)
+    if ([IO.Path]::GetExtension($Path) -ceq ".png") {
+        return ,$Bytes
+    }
+
+    # Checkout settings must not change the Chrome Web Store artifact.
+    $Text = $Utf8NoBom.GetString($Bytes)
+    if ($Text.Length -gt 0 -and $Text[0] -eq [char]0xfeff) {
+        $Text = $Text.Substring(1)
+    }
+    $Text = $Text.Replace("`r`n", "`n").Replace("`r", "`n")
+    return ,$Utf8NoBom.GetBytes($Text)
+}
+
 $DuplicatePaths = @($Allowlist | Group-Object | Where-Object Count -gt 1)
 if ($DuplicatePaths.Count -gt 0) {
     throw "The package allowlist contains duplicate paths."
@@ -72,15 +91,14 @@ try {
             [IO.Compression.CompressionLevel]::Optimal
         )
         $Entry.LastWriteTime = $FixedTimestamp
-        $InputStream = [IO.File]::OpenRead($SourcePath)
+        $Bytes = Get-PackageBytes $SourcePath
         $OutputStream = $Entry.Open()
 
         try {
-            $InputStream.CopyTo($OutputStream)
+            $OutputStream.Write($Bytes, 0, $Bytes.Length)
         }
         finally {
             $OutputStream.Dispose()
-            $InputStream.Dispose()
         }
     }
 }
