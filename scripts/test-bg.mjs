@@ -365,6 +365,7 @@ await sendRuntimeMessage({
   settings: { enabled: true },
 });
 assert.deepEqual(lastPostBody().services, {
+  appleMusic: false,
   soundcloud: false,
   youtubeMusic: false,
 });
