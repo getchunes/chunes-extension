@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+﻿import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -107,7 +107,7 @@ if (manifest) {
 
   check(manifest.manifest_version === 3, "manifest_version must be 3");
   check(manifest.name === "Chune ID", "manifest name must remain Chune ID");
-  check(manifest.version === "1.0.3", "manifest version must remain 1.0.3");
+  check(manifest.version === "1.0.4", "manifest version must remain 1.0.4");
   check(
     manifest.minimum_chrome_version === "120",
     "minimum_chrome_version must be 120 for 30-second alarms",
@@ -226,7 +226,14 @@ check(
   /data-setting=["']appleMusic["'][^>]*\bchecked\b/.test(popupHtml),
   "Apple Music switch must default to on",
 );
-check(popupHtml.includes("127.0.0.1"), "popup must contain the direct local endpoint disclosure");
+check(
+  popupHtml.split("Allow Chunes to publish presence.").length - 1 === 3,
+  "popup must have exactly three per-service publish sublines",
+);
+check(
+  !popupHtml.includes("privacy-note"),
+  "popup must not contain the removed aside privacy-note block",
+);
 check(/>Chune ID privacy<\/a>/.test(popupHtml), "popup must label Chune ID privacy clearly");
 check(
   popupHtml.includes("https://github.com/getchunes/chunes/blob/main/PRIVACY.md"),
@@ -410,8 +417,10 @@ check(
   normalizedPrivacyPolicy.includes("sends listening presence to Discord") &&
     normalizedPrivacyPolicy.includes("searches SoundCloud with title and artist") &&
     normalizedPrivacyPolicy.includes("video ID to YouTube Music's web metadata endpoint") &&
+    normalizedPrivacyPolicy.includes("Apple Music") &&
+    normalizedPrivacyPolicy.includes("itunes.apple.com/search") &&
     normalizedPrivacyPolicy.includes("getchunes/chunes/blob/main/PRIVACY.md"),
-  "privacy policy must disclose downstream companion behavior and link its policy",
+  "privacy policy must disclose downstream companion behavior including Apple Music and link its policy",
 );
 check(
   privacyPolicy.includes("at most 64 tabs") &&
@@ -433,15 +442,15 @@ check(
 );
 
 const dashboardChecklist = readFileSync(join(root, "store/DASHBOARD_CHECKLIST.md"), "utf8");
-const packageSha256 = "e573bf2182cf2198a9b5335f2036e1dd02df3fb5f2383ef7164e51692680a078";
+const packageSha256 = "1967c5879262c3bd0f5f0d8f8f29a170d4837cb3acd84ae37a5da12569a7fe38";
 check(
   dashboardChecklist.includes("previously submitted Chrome Web Store version 1.0.0") &&
-    dashboardChecklist.includes("chune-id-1.0.3.zip") &&
-    dashboardChecklist.includes("version 1.0.3") &&
+    dashboardChecklist.includes("chune-id-1.0.4.zip") &&
+    dashboardChecklist.includes("version 1.0.4") &&
     dashboardChecklist.includes("protocol 2") &&
     dashboardChecklist.includes("signed or unsigned manual-only") &&
     dashboardChecklist.includes(packageSha256),
-  "dashboard checklist must describe the version 1.0.3 update coordination",
+  "dashboard checklist must describe the version 1.0.4 update coordination",
 );
 
 const submission = readFileSync(join(root, "store/SUBMISSION.md"), "utf8");
@@ -450,7 +459,7 @@ const normalizedSubmission = submission.replace(/\s+/g, " ");
 const normalizedReviewerNotes = reviewerNotes.replace(/\s+/g, " ");
 check(
   normalizedSubmission.includes("Version 1.0.0 has already been submitted") &&
-    normalizedSubmission.includes("separate 1.0.3 popup-fit update") &&
+    normalizedSubmission.includes("separate 1.0.4 popup-restore and Apple Music disclosure update") &&
     normalizedSubmission.includes(packageSha256) &&
     normalizedSubmission.includes("unsigned manual release") &&
     normalizedReviewerNotes.includes("Unknown publisher") &&

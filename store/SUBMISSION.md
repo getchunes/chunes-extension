@@ -1,4 +1,4 @@
-# Chrome Web Store Submission
+﻿# Chrome Web Store Submission
 
 Use the separated paste-ready dashboard material as the canonical submission
 copy:
@@ -11,12 +11,12 @@ copy:
 
 ## Reviewed Runtime Contract
 
-- Manifest V3, version 1.0.3, minimum Chrome version 120
-- Permissions limited to `alarms`, `storage`, loopback, SoundCloud, and YouTube hosts
+- Manifest V3, version 1.0.4, minimum Chrome version 120
+- Permissions limited to `alarms`, `storage`, loopback, SoundCloud, YouTube, and Apple Music hosts
 - `application/json` POSTs to `http://127.0.0.1:52846/tabs`
 - Exact top-level payload keys: `enabled`, `services`, and `tabs`
 - At most 64 tabs, 512 Unicode characters per title, and 32 KiB per UTF-8 body
-- Exact tab payload keys: `host`, `mediaId`, and `title`; `mediaId` is a validated YouTube Music video ID or `null`
+- Exact tab payload keys: `host`, `mediaId`, and `title`; `mediaId` is a validated YouTube Music video ID or `null`; `mediaId` is always `null` for Apple Music
 - Connection accepted only with response header `X-Chunes-Protocol: 2`
 - Service switches control publishing while local track classification continues for suppression
 - Master off skips tab queries and sends an empty paused heartbeat
@@ -26,8 +26,9 @@ copy:
 Chune ID itself directly sends matching track data and a validated YouTube Music
 video ID only to local Chunes at `127.0.0.1`. For enabled sources, Chunes sends
 listening presence to Discord and may, under optional album-art controls, search
-SoundCloud with title/artist or request exact square artwork from YouTube Music
-using its public video ID. Use both public policies in the dashboard:
+SoundCloud with title/artist, request exact square artwork from YouTube Music
+using its public video ID, or search Apple's public iTunes Search API with
+title/artist for Apple Music artwork. Use both public policies in the dashboard:
 
 - Chune ID: https://github.com/getchunes/chunes-extension/blob/main/PRIVACY.md
 - Chunes companion: https://github.com/getchunes/chunes/blob/main/PRIVACY.md
@@ -35,10 +36,10 @@ using its public video ID. Use both public policies in the dashboard:
 ## Release Coordination
 
 Version 1.0.0 has already been submitted to the Chrome Web Store. The immutable
-1.0.0 and 1.0.1 GitHub artifacts remain unchanged. This submission is the
-separate 1.0.3 popup-fit update and must use a newly built
-`chune-id-1.0.3.zip` with SHA-256
-`e573bf2182cf2198a9b5335f2036e1dd02df3fb5f2383ef7164e51692680a078`.
+1.0.0, 1.0.1, 1.0.2, and 1.0.3 GitHub artifacts remain unchanged. This
+submission is the separate 1.0.4 popup-restore and Apple Music disclosure update
+and must use a newly built `chune-id-1.0.4.zip` with SHA-256
+`1967c5879262c3bd0f5f0d8f8f29a170d4837cb3acd84ae37a5da12569a7fe38`.
 
 Chunes desktop 1.0.1 is the matching protocol-2 companion. Its release-specific
 notice labels the immutable MSI as an unsigned manual release. Chrome reviewers
