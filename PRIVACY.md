@@ -1,6 +1,6 @@
 # Chune ID Privacy Policy
 
-Effective date: July 18, 2026
+Effective date: July 19, 2026
 
 Chune ID is a local companion extension for the Chunes desktop application.
 Its single purpose is to identify supported audible browser tabs so Chunes can
@@ -9,13 +9,16 @@ show the correct music presence and suppress regular YouTube audio.
 ## Data handled
 
 When **Chune ID enabled** is on, the extension queries currently audible tabs
-only on its declared SoundCloud and YouTube hosts. For matching tabs, it reads:
+only on its declared SoundCloud, YouTube, and Apple Music hosts. For matching
+tabs, it reads:
 
 - the tab URL, used in memory only to determine the hostname; and
 - the tab title, which can contain website content such as a track, artist, or video title.
 
 For each matching tab, the extension sends its hostname and title alongside the
-master and two service booleans. For a YouTube Music watch page, it also sends
+master boolean and the SoundCloud and YouTube Music service booleans. The
+Apple Music setting has no boolean in the report; when it is off, Apple Music
+tabs are withheld from reports entirely. For a YouTube Music watch page, it also sends
 the page's 11-character public video ID so Chunes can request the matching album
 art. It does not send a full URL or general browsing history. The Chrome Web
 Store classifies this limited handling under the **web history** and **website
@@ -25,15 +28,16 @@ are involved.
 Each local report contains at most 64 tabs and has a serialized UTF-8 limit of
 32 KiB. Each title is truncated to at most 512 Unicode characters, and each
 YouTube Music video ID is validated before reporting. Within those limits,
-enabled SoundCloud and YouTube Music tabs are considered first, then disabled
-supported services, then blocked regular YouTube tabs. Tabs that do not fit are
-omitted, and the popup shows omitted-tab and truncated-title counts.
+enabled supported tabs are considered first, then disabled supported services,
+then blocked regular YouTube tabs. Tabs that do not fit are omitted, and the
+popup shows omitted-tab and truncated-title counts.
 
-Service controls do not stop local classification. If SoundCloud or YouTube
-Music is disabled, matching audible tabs are still reported to Chunes with the
+The SoundCloud and YouTube Music controls do not stop local classification. If
+either is disabled, matching audible tabs are still reported to Chunes with the
 disabled setting so the desktop app can suppress that source rather than treat
-it as generic browser audio. Regular YouTube is always classified as blocked,
-regardless of the YouTube Music setting.
+it as generic browser audio. The Apple Music control is stricter: turning it
+off stops Apple Music tabs from being reported at all. Regular YouTube is
+always classified as blocked, regardless of the YouTube Music setting.
 
 When **Chune ID enabled** is off, the extension does not query tabs. It sends a
 minimal heartbeat containing `enabled: false`, the two service settings, and an
@@ -54,18 +58,19 @@ another external application service.
 ## Downstream Chunes behavior
 
 After Chune ID sends a report locally, the separate Chunes desktop companion
-controls downstream presence and artwork behavior. For enabled SoundCloud and
-YouTube Music sources, Chunes sends listening presence to Discord. If the user
-enables optional album-art behavior in the companion, Chunes searches
-SoundCloud with title and artist for SoundCloud artwork, or sends the public
-video ID to YouTube Music's web metadata endpoint for exact YouTube Music album
-art. Those network requests are made by Chunes, not directly by this extension,
+controls downstream presence and artwork behavior. For enabled SoundCloud,
+YouTube Music, and Apple Music sources, Chunes sends listening presence to
+Discord. If the user enables optional album-art behavior in the companion,
+Chunes searches SoundCloud with title and artist for SoundCloud artwork, sends
+the public video ID to YouTube Music's web metadata endpoint for exact YouTube
+Music album art, or searches the public iTunes Search API with title and
+artist for Apple Music artwork. Those network requests are made by Chunes, not directly by this extension,
 and are subject to the companion's controls and
 [Privacy Policy](https://github.com/getchunes/chunes/blob/main/PRIVACY.md).
 
 ## Settings and retention
 
-The master, SoundCloud, and YouTube Music switches are stored in
+The master, SoundCloud, YouTube Music, and Apple Music switches are stored in
 `chrome.storage.local`, never Chrome sync. They remain in the browser profile
 until changed, cleared through browser controls, or removed with the extension.
 
@@ -83,7 +88,8 @@ data storage, or user accounts. The extension does not sell personal or
 sensitive data, use it for credit or lending decisions, or use it for
 advertising, profiling, or purposes unrelated to its stated functionality. Its
 direct transfer is to local Chunes; the functional downstream Discord presence
-and optional SoundCloud or YouTube Music album-art behavior are described above.
+and optional SoundCloud, YouTube Music, or Apple Music album-art behavior are
+described above.
 No person reviews tab data through this extension.
 
 ## Chrome Web Store Limited Use
@@ -99,15 +105,17 @@ purposes.
 
 The extension uses Manifest V3, contains no remote code or inline script, and
 sets `Content-Type: application/json` on loopback reports. It requests host
-access only for the local endpoint and the supported SoundCloud and YouTube
-pages needed to read audible tab hostnames, titles, and a YouTube Music video ID.
+access only for the local endpoint and the supported SoundCloud, YouTube, and
+Apple Music pages needed to read audible tab hostnames, titles, and a YouTube
+Music video ID.
 
 ## Your choices
 
 Use the popup's master switch to stop all tab queries and track reporting. The
-service switches control which supported services Chunes may publish, but
-matching track data still goes to local Chunes for suppression while the master
-is on. Optional album-art behavior is controlled separately in Chunes.
+service switches control which supported services Chunes may publish. For
+SoundCloud and YouTube Music, matching track data still goes to local Chunes
+for suppression while the master is on; turning off Apple Music also stops its
+tab reports. Optional album-art behavior is controlled separately in Chunes.
 Removing the extension deletes its local extension storage according to
 Chrome's normal uninstall behavior.
 

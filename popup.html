@@ -61,7 +61,7 @@
           <input class="switch" id="enabled" data-setting="enabled" type="checkbox" checked>
         </div>
 
-        <p class="classification-note"><strong>Service switches only control publishing.</strong> Matching track data still goes to local Chunes for suppression. Only turning off Chune ID stops tab queries and reporting.</p>
+        <p class="classification-note"><strong>Service switches only control publishing.</strong> Matching track data still goes to local Chunes for suppression. Apple Music is the exception: its switch also stops its tab reports. Only turning off Chune ID stops all tab queries and reporting.</p>
 
         <div class="service-list">
           <div class="setting">
@@ -85,12 +85,23 @@
             </div>
             <input class="switch" id="youtube-music" data-setting="youtubeMusic" type="checkbox" checked>
           </div>
+
+          <div class="setting">
+            <div class="service-identity">
+              <span class="service-dot applemusic" aria-hidden="true"></span>
+              <div class="setting-copy">
+                <label for="apple-music">Apple Music</label>
+                <p>Off also stops reporting its tabs.</p>
+              </div>
+            </div>
+            <input class="switch" id="apple-music" data-setting="appleMusic" type="checkbox" checked>
+          </div>
         </div>
       </section>
 
       <aside class="privacy-note">
         <span class="info-mark" aria-hidden="true">i</span>
-        <p>Chune ID sends audible SoundCloud and YouTube tab details, plus a YouTube Music track ID, only to local Chunes at <code>127.0.0.1</code>. For online art, Chunes may contact the matching service and publish track details and art to Discord.</p>
+        <p>Chune ID sends audible SoundCloud, YouTube, and Apple Music tab details, plus a YouTube Music track ID, only to local Chunes at <code>127.0.0.1</code>. For online art, Chunes may contact the matching service and publish track details and art to Discord.</p>
       </aside>
     </main>
 

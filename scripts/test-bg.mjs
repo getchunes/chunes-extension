@@ -234,6 +234,7 @@ assert.deepEqual(alarmsCreated[0], {
   options: { periodInMinutes: 0.5 },
 });
 assert.deepEqual(stored, {
+  appleMusic: true,
   enabled: true,
   soundcloud: true,
   youtubeMusic: true,
@@ -271,6 +272,7 @@ assert.ok(
 assert.deepEqual(queries[0], {
   audible: true,
   url: [
+    "https://music.apple.com/*",
     "https://soundcloud.com/*",
     "https://www.soundcloud.com/*",
     "https://youtube.com/*",
@@ -421,6 +423,53 @@ assert.equal(lastPostBody().tabs[0].title, "", "missing titles must preserve the
 await sendRuntimeMessage({
   type: "update-settings",
   settings: { soundcloud: true, youtubeMusic: true },
+});
+
+queryResults = [
+  {
+    title: "Album - Album by Artist - Apple Music",
+    url: "https://music.apple.com/us/album/album/12345",
+  },
+];
+const appleMusicRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(appleMusicRefresh.status.current.source, "Apple Music");
+assert.equal(appleMusicRefresh.status.current.publishEnabled, true);
+assert.equal(appleMusicRefresh.status.tabCount, 1);
+assert.deepEqual(lastPostBody().tabs, [
+  {
+    host: "music.apple.com",
+    mediaId: null,
+    title: "Album - Album by Artist - Apple Music",
+  },
+]);
+assert.deepEqual(
+  Object.keys(lastPostBody().services),
+  protocolContract.request.serviceKeys,
+  "Apple Music must not add a services flag to the reviewed payload",
+);
+
+await sendRuntimeMessage({
+  type: "update-settings",
+  settings: { appleMusic: false },
+});
+assert.deepEqual(
+  lastPostBody().tabs,
+  [],
+  "Apple Music tabs must not be reported while the switch is off",
+);
+const disabledAppleMusicStatus = notifications.at(-1).status;
+assert.equal(disabledAppleMusicStatus.current.source, "Apple Music");
+assert.equal(
+  disabledAppleMusicStatus.current.publishEnabled,
+  false,
+  "the popup must still show a disabled Apple Music tab locally",
+);
+assert.equal(disabledAppleMusicStatus.tabCount, 1);
+assert.equal(disabledAppleMusicStatus.omittedTabCount, 0);
+
+await sendRuntimeMessage({
+  type: "update-settings",
+  settings: { appleMusic: true },
 });
 
 await sendRuntimeMessage({

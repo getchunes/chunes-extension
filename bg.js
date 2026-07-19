@@ -12,12 +12,14 @@ const MAX_TITLE_CHARACTERS = 512;
 const MAX_REQUEST_BYTES = 32 * 1024;
 const textEncoder = new TextEncoder();
 const DEFAULT_SETTINGS = Object.freeze({
+  appleMusic: true,
   enabled: true,
   soundcloud: true,
   youtubeMusic: true,
 });
 const SETTING_KEYS = Object.freeze(Object.keys(DEFAULT_SETTINGS));
 const SUPPORTED_URL_PATTERNS = Object.freeze([
+  "https://music.apple.com/*",
   "https://soundcloud.com/*",
   "https://www.soundcloud.com/*",
   "https://youtube.com/*",
@@ -51,6 +53,10 @@ function classifyHost(host) {
 
   if (host === "music.youtube.com") {
     return "YouTube Music";
+  }
+
+  if (host === "music.apple.com") {
+    return "Apple Music";
   }
 
   if (
@@ -171,9 +177,13 @@ function truncateTitle(title) {
 }
 
 function canPublish(source, settings) {
-  return source === "SoundCloud"
-    ? settings.soundcloud
-    : source === "YouTube Music" && settings.youtubeMusic;
+  if (source === "SoundCloud") {
+    return settings.soundcloud;
+  }
+  if (source === "YouTube Music") {
+    return settings.youtubeMusic;
+  }
+  return source === "Apple Music" && settings.appleMusic;
 }
 
 function reportPriority(tab, settings) {
@@ -206,6 +216,18 @@ function buildReport(settings, classifiedTabs) {
 
     const truncatedTitle = truncateTitle(tab.title);
     const reportedTab = { ...tab, title: truncatedTitle.title };
+
+    // Apple Music has no services flag in the protocol-2 payload; consent is
+    // expressed by only reporting its tabs while the switch is on. Keep the
+    // tab in the local status so the popup can still show it.
+    if (tab.source === "Apple Music" && !settings.appleMusic) {
+      reportedTabs.push(reportedTab);
+      if (truncatedTitle.truncated) {
+        truncatedTitleCount += 1;
+      }
+      continue;
+    }
+
     payload.tabs.push({
       host: reportedTab.host,
       mediaId: reportedTab.mediaId,
