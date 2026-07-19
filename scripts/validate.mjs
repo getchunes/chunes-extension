@@ -417,8 +417,10 @@ check(
   normalizedPrivacyPolicy.includes("sends listening presence to Discord") &&
     normalizedPrivacyPolicy.includes("searches SoundCloud with title and artist") &&
     normalizedPrivacyPolicy.includes("video ID to YouTube Music's web metadata endpoint") &&
+    normalizedPrivacyPolicy.includes("Apple Music") &&
+    normalizedPrivacyPolicy.includes("itunes.apple.com/search") &&
     normalizedPrivacyPolicy.includes("getchunes/chunes/blob/main/PRIVACY.md"),
-  "privacy policy must disclose downstream companion behavior and link its policy",
+  "privacy policy must disclose downstream companion behavior including Apple Music and link its policy",
 );
 check(
   privacyPolicy.includes("at most 64 tabs") &&

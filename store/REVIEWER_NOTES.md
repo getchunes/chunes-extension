@@ -11,10 +11,11 @@ app to be running and signed in with **Share my activity** enabled.
 2. Install Chune ID and click its toolbar icon. Click **Refresh**; the popup should show **Chunes desktop connected**.
 3. Play a public SoundCloud track from `https://soundcloud.com/`, then refresh. The popup should show **SoundCloud** and the audible tab title.
 4. Play a public audio track from `https://music.youtube.com/`, then refresh. The popup should show **YouTube Music**, a **YTM** badge, and the audible tab title. With online album art enabled in Chunes, an audio track with available album metadata should use square YouTube Music artwork rather than a generic video thumbnail; video-style tracks without square music artwork may use the fallback Chunes image.
-5. Turn off the relevant service switch. The popup labels the source **publishing off**. Its matching track data remains locally reported so Chunes can suppress that disabled service.
-6. Play a regular video at `https://www.youtube.com/`. Chunes suppresses regular YouTube regardless of the YouTube Music switch. If no supported music is audible, the popup shows **No supported audio**.
-7. Turn off **Chune ID enabled**. The popup shows **Identification paused**. The worker does not query tabs and sends an empty paused heartbeat so Chunes can clear browser presence.
-8. Stop Chunes and refresh. The popup should show **Chunes desktop not detected** without changing browser playback.
+5. Play a track from `https://music.apple.com/`, then refresh. The popup should show **Apple Music** and the audible tab title.
+6. Turn off the relevant service switch. The popup labels the source **publishing off**. Its matching track data remains locally reported so Chunes can suppress that disabled service.
+7. Play a regular video at `https://www.youtube.com/`. Chunes suppresses regular YouTube regardless of the YouTube Music switch. If no supported music is audible, the popup shows **No supported audio**.
+8. Turn off **Chune ID enabled**. The popup shows **Identification paused**. The worker does not query tabs and sends an empty paused heartbeat so Chunes can clear browser presence.
+9. Stop Chunes and refresh. The popup should show **Chunes desktop not detected** without changing browser playback.
 
 Reports run after relevant tab changes, setting changes, popup refreshes, and a
 30-second alarm. Each request is an `application/json` POST to
@@ -24,6 +25,7 @@ Reports run after relevant tab changes, setting changes, popup refreshes, and a
 {
   "enabled": true,
   "services": {
+    "appleMusic": true,
     "soundcloud": true,
     "youtubeMusic": true
   },
@@ -43,10 +45,11 @@ connected only when a successful desktop response includes
 `X-Chunes-Protocol: 2`; a response without that marker is shown as an
 incompatible desktop version.
 
-The master and both service settings default to on and persist only in
+The master and all service settings default to on and persist only in
 `chrome.storage.local`. Host permissions replace broad `tabs` access. Chune ID
 contains no remote code and directly contacts only local Chunes. For enabled
 services, Chunes sends presence to Discord and may search SoundCloud with
-title/artist or send a public video ID to YouTube Music for optional album art
-under companion controls. Companion
+title/artist, send a public video ID to YouTube Music for optional album art,
+or search Apple's public iTunes Search API with title/artist for Apple Music
+artwork under companion controls. Companion
 privacy: https://github.com/getchunes/chunes/blob/main/PRIVACY.md
