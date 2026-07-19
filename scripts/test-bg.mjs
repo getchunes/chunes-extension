@@ -258,7 +258,7 @@ assert.deepEqual(normalize(posts[0].options.headers), {
 assert.equal(posts[0].options.redirect, "error", "loopback fetch must reject redirects");
 assert.equal(
   posts[0].options.body,
-  '{"enabled":true,"services":{"soundcloud":true,"youtubeMusic":true},"tabs":[{"host":"soundcloud.com","mediaId":null,"title":"Artist - SoundCloud track"},{"host":"music.youtube.com","mediaId":"YtMusic1234","title":"Artist - YouTube Music track"},{"host":"www.youtube.com","mediaId":null,"title":"Regular YouTube video"}]}',
+  '{"enabled":true,"services":{"appleMusic":true,"soundcloud":true,"youtubeMusic":true},"tabs":[{"host":"soundcloud.com","mediaId":null,"title":"Artist - SoundCloud track"},{"host":"music.youtube.com","mediaId":"YtMusic1234","title":"Artist - YouTube Music track"},{"host":"www.youtube.com","mediaId":null,"title":"Regular YouTube video"}]}',
   "POST body must use the exact reviewed payload shape and protocol keys",
 );
 assert.deepEqual(Object.keys(lastPostBody()), protocolContract.request.payloadKeys);

@@ -96,6 +96,7 @@ if (manifest) {
   const expectedPermissions = ["alarms", "storage"];
   const expectedHosts = [
     "http://127.0.0.1/*",
+    "https://music.apple.com/*",
     "https://soundcloud.com/*",
     "https://www.soundcloud.com/*",
     "https://youtube.com/*",
