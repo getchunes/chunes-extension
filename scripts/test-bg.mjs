@@ -195,7 +195,7 @@ const runtimeProtocolContract = normalize(
           titleUnicodeCharacters: MAX_TITLE_CHARACTERS,
         },
         payloadKeys: ["enabled", "services", "tabs"],
-        serviceKeys: ["soundcloud", "youtubeMusic"],
+        serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
         tabKeys: ["host", "mediaId", "title"],
       },
       response: {
