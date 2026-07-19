@@ -23,7 +23,6 @@ body {
   display: flex;
   flex-direction: column;
   width: 380px;
-  min-height: 550px;
   margin: 0;
   overflow-x: hidden;
   background: var(--page);
@@ -39,7 +38,7 @@ input {
 .hero {
   position: relative;
   overflow: hidden;
-  padding: 10px 18px 10px;
+  padding: 8px 18px 8px;
   background:
     radial-gradient(circle at 92% -12%, rgb(88 101 242 / 55%), transparent 44%),
     linear-gradient(145deg, #242630 5%, #30323d 100%);
@@ -119,7 +118,7 @@ h2 {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  margin-top: 9px;
+  margin-top: 7px;
   padding: 6px 9px;
   border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 999px;
@@ -160,7 +159,7 @@ main {
 }
 
 .now-card {
-  padding: 11px;
+  padding: 10px 11px;
 }
 
 .section-heading,
@@ -280,7 +279,7 @@ footer {
 }
 
 .settings-intro {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .local-badge {
@@ -295,19 +294,19 @@ footer {
 }
 
 .setting {
-  min-height: 38px;
+  min-height: 34px;
   gap: 12px;
   border-top: 1px solid #ecedf1;
 }
 
 .master-setting {
-  min-height: 48px;
+  min-height: 44px;
   border-top-color: #e2e3e9;
 }
 
 .classification-note {
-  margin: 0 0 5px;
-  padding: 7px 8px;
+  margin: 0 0 4px;
+  padding: 6px 8px;
   border-left: 3px solid var(--purple);
   border-radius: 6px;
   background: #f3f3ff;
@@ -414,7 +413,7 @@ a:focus-visible,
   display: grid;
   grid-template-columns: 18px 1fr;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 4px;
   padding: 0 4px;
   color: #777a87;
 }
