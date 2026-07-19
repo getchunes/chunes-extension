@@ -13,11 +13,13 @@ const MAX_REQUEST_BYTES = 32 * 1024;
 const textEncoder = new TextEncoder();
 const DEFAULT_SETTINGS = Object.freeze({
   enabled: true,
+  appleMusic: true,
   soundcloud: true,
   youtubeMusic: true,
 });
 const SETTING_KEYS = Object.freeze(Object.keys(DEFAULT_SETTINGS));
 const SUPPORTED_URL_PATTERNS = Object.freeze([
+  "https://music.apple.com/*",
   "https://soundcloud.com/*",
   "https://www.soundcloud.com/*",
   "https://youtube.com/*",
@@ -45,6 +47,10 @@ let lastStatus = {
 };
 
 function classifyHost(host) {
+  if (host === "music.apple.com") {
+    return "Apple Music";
+  }
+
   if (host === "soundcloud.com" || host === "www.soundcloud.com") {
     return "SoundCloud";
   }
@@ -171,9 +177,9 @@ function truncateTitle(title) {
 }
 
 function canPublish(source, settings) {
-  return source === "SoundCloud"
-    ? settings.soundcloud
-    : source === "YouTube Music" && settings.youtubeMusic;
+  if (source === "Apple Music") return settings.appleMusic;
+  if (source === "SoundCloud") return settings.soundcloud;
+  return source === "YouTube Music" && settings.youtubeMusic;
 }
 
 function reportPriority(tab, settings) {
@@ -187,6 +193,7 @@ function buildReport(settings, classifiedTabs) {
   const payload = {
     enabled: settings.enabled,
     services: {
+      appleMusic: settings.appleMusic,
       soundcloud: settings.soundcloud,
       youtubeMusic: settings.youtubeMusic,
     },

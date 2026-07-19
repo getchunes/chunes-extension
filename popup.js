@@ -2,6 +2,7 @@
 
 const DEFAULT_SETTINGS = Object.freeze({
   enabled: true,
+  appleMusic: true,
   soundcloud: true,
   youtubeMusic: true,
 });
@@ -10,6 +11,7 @@ const elements = {
   connection: document.querySelector("#connection"),
   connectionText: document.querySelector("#connection-text"),
   enabled: document.querySelector("#enabled"),
+  appleMusic: document.querySelector("#apple-music"),
   refresh: document.querySelector("#refresh"),
   soundcloud: document.querySelector("#soundcloud"),
   sourceMark: document.querySelector("#source-mark"),
@@ -20,6 +22,7 @@ const elements = {
 };
 const settingInputs = [
   elements.enabled,
+  elements.appleMusic,
   elements.soundcloud,
   elements.youtubeMusic,
 ];
@@ -92,6 +95,9 @@ function renderCurrent(status) {
   } else if (status.current.source === "YouTube Music") {
     elements.sourceMark.classList.add("youtube");
     elements.sourceMark.textContent = "YTM";
+  } else if (status.current.source === "Apple Music") {
+    elements.sourceMark.classList.add("applemusic");
+    elements.sourceMark.textContent = "AM";
   }
 
   if (status.current.publishEnabled === false) {
@@ -110,6 +116,7 @@ function renderStatus(status) {
   const settings = { ...DEFAULT_SETTINGS, ...(status.settings || {}) };
   confirmedSettings = settings;
   elements.enabled.checked = settings.enabled;
+  elements.appleMusic.checked = settings.appleMusic;
   elements.soundcloud.checked = settings.soundcloud;
   elements.youtubeMusic.checked = settings.youtubeMusic;
 
