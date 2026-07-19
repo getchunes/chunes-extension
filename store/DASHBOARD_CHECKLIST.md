@@ -1,20 +1,20 @@
-# Chrome Web Store Dashboard Checklist
+﻿# Chrome Web Store Dashboard Checklist
 
 These steps require a maintainer in the Chrome Web Store dashboard and are not
 performed by the release scripts.
 
-## Version 1.0.3 Coordination
+## Version 1.0.4 Coordination
 
-- [ ] Leave the previously submitted Chrome Web Store version 1.0.0 and the immutable 1.0.0 and 1.0.1 GitHub artifacts unchanged.
-- [ ] Confirm `manifest.json` and the popup both show version 1.0.3.
-- [ ] Confirm the new GitHub `v1.0.3` release is immutable and its tag resolves to the reviewed release commit.
+- [ ] Leave the previously submitted Chrome Web Store version 1.0.0 and the immutable 1.0.0, 1.0.1, 1.0.2, and 1.0.3 GitHub artifacts unchanged.
+- [ ] Confirm `manifest.json` and the popup both show version 1.0.4.
+- [ ] Confirm the new GitHub `v1.0.4` release is immutable and its tag resolves to the reviewed release commit.
 - [ ] Confirm the matching Chunes desktop 1.0.1 release uses protocol 2 and clearly states whether its MSI is signed or unsigned manual-only.
 
 ## Package
 
 - [ ] Run `scripts/validate.ps1`, `scripts/package.ps1`, and `scripts/validate-package.ps1` from the repository root.
-- [ ] Upload `dist/chune-id-1.0.3.zip` and confirm the dashboard detects Manifest V3, version 1.0.3, and minimum Chrome version 120.
-- [ ] Confirm the local upload ZIP SHA-256 is `e573bf2182cf2198a9b5335f2036e1dd02df3fb5f2383ef7164e51692680a078` and matches the reviewed 1.0.3 GitHub release asset digest.
+- [ ] Upload `dist/chune-id-1.0.4.zip` and confirm the dashboard detects Manifest V3, version 1.0.4, and minimum Chrome version 120.
+- [ ] Confirm the local upload ZIP SHA-256 is `1967c5879262c3bd0f5f0d8f8f29a170d4837cb3acd84ae37a5da12569a7fe38` and matches the reviewed 1.0.4 GitHub release asset digest.
 
 ## Store Listing
 
@@ -33,7 +33,7 @@ performed by the release scripts.
 - [ ] Answer **No** for remote code.
 - [ ] Enter `https://github.com/getchunes/chunes-extension/blob/main/PRIVACY.md` as the privacy policy URL.
 - [ ] Link `https://github.com/getchunes/chunes/blob/main/PRIVACY.md` wherever companion privacy or downstream behavior can be explained.
-- [ ] Confirm disclosures distinguish direct local extension traffic from Chunes sending enabled presence to Discord and optional provider-specific SoundCloud or YouTube Music album-art requests.
+- [ ] Confirm disclosures distinguish direct local extension traffic from Chunes sending enabled presence to Discord and optional provider-specific SoundCloud, YouTube Music, or Apple Music album-art requests.
 - [ ] Confirm the privacy policy is publicly reachable from a signed-out browser after these files reach the repository's default branch.
 
 ## Permissions And Review
