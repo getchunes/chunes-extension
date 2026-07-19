@@ -19,7 +19,7 @@ assert.deepEqual(protocolContract, {
       titleUnicodeCharacters: 512,
     },
     payloadKeys: ["enabled", "services", "tabs"],
-    serviceKeys: ["soundcloud", "youtubeMusic"],
+    serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
     tabKeys: ["host", "mediaId", "title"],
   },
   response: {
@@ -195,7 +195,7 @@ const runtimeProtocolContract = normalize(
           titleUnicodeCharacters: MAX_TITLE_CHARACTERS,
         },
         payloadKeys: ["enabled", "services", "tabs"],
-        serviceKeys: ["soundcloud", "youtubeMusic"],
+        serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
         tabKeys: ["host", "mediaId", "title"],
       },
       response: {
@@ -235,6 +235,7 @@ assert.deepEqual(alarmsCreated[0], {
 });
 assert.deepEqual(stored, {
   enabled: true,
+  appleMusic: true,
   soundcloud: true,
   youtubeMusic: true,
 });
@@ -257,7 +258,7 @@ assert.deepEqual(normalize(posts[0].options.headers), {
 assert.equal(posts[0].options.redirect, "error", "loopback fetch must reject redirects");
 assert.equal(
   posts[0].options.body,
-  '{"enabled":true,"services":{"soundcloud":true,"youtubeMusic":true},"tabs":[{"host":"soundcloud.com","mediaId":null,"title":"Artist - SoundCloud track"},{"host":"music.youtube.com","mediaId":"YtMusic1234","title":"Artist - YouTube Music track"},{"host":"www.youtube.com","mediaId":null,"title":"Regular YouTube video"}]}',
+  '{"enabled":true,"services":{"appleMusic":true,"soundcloud":true,"youtubeMusic":true},"tabs":[{"host":"soundcloud.com","mediaId":null,"title":"Artist - SoundCloud track"},{"host":"music.youtube.com","mediaId":"YtMusic1234","title":"Artist - YouTube Music track"},{"host":"www.youtube.com","mediaId":null,"title":"Regular YouTube video"}]}',
   "POST body must use the exact reviewed payload shape and protocol keys",
 );
 assert.deepEqual(Object.keys(lastPostBody()), protocolContract.request.payloadKeys);
@@ -271,6 +272,7 @@ assert.ok(
 assert.deepEqual(queries[0], {
   audible: true,
   url: [
+    "https://music.apple.com/*",
     "https://soundcloud.com/*",
     "https://www.soundcloud.com/*",
     "https://youtube.com/*",
@@ -298,7 +300,7 @@ assert.equal(compatibleDesktopRefresh.status.incompatible, false);
 
 await sendRuntimeMessage({
   type: "update-settings",
-  settings: { soundcloud: false },
+  settings: { appleMusic: false, soundcloud: false },
 });
 assert.equal(lastPostBody().services.soundcloud, false);
 assert.ok(
@@ -325,7 +327,7 @@ await sendRuntimeMessage({
 assert.equal(queries.length, queryCountBeforePause, "master off must not query tabs");
 assert.deepEqual(lastPostBody(), {
   enabled: false,
-  services: { soundcloud: false, youtubeMusic: true },
+  services: { appleMusic: false, soundcloud: false, youtubeMusic: true },
   tabs: [],
 });
 
@@ -363,6 +365,7 @@ await sendRuntimeMessage({
   settings: { enabled: true },
 });
 assert.deepEqual(lastPostBody().services, {
+  appleMusic: false,
   soundcloud: false,
   youtubeMusic: false,
 });
@@ -425,7 +428,7 @@ await sendRuntimeMessage({
 
 await sendRuntimeMessage({
   type: "update-settings",
-  settings: { soundcloud: false },
+  settings: { appleMusic: false, soundcloud: false },
 });
 queryResults = [
   ...Array.from({ length: 64 }, (_, index) => ({
@@ -460,7 +463,7 @@ assert.equal(priorityRefresh.status.truncatedTitleCount, 0);
 
 await sendRuntimeMessage({
   type: "update-settings",
-  settings: { soundcloud: true },
+  settings: { appleMusic: true, soundcloud: true },
 });
 queryResults = Array.from({ length: 65 }, (_, index) => ({
   title: `Track ${index}`,
@@ -625,7 +628,7 @@ await waitFor(
 const refreshDuringBurst = sendRuntimeMessage({ type: "refresh" });
 const settingDuringBurst = sendRuntimeMessage({
   type: "update-settings",
-  settings: { soundcloud: false },
+  settings: { appleMusic: false, soundcloud: false },
 });
 events.updated.listener(1, { title: "changed" });
 events.updated.listener(1, { audible: true });

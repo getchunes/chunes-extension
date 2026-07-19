@@ -23,7 +23,7 @@ body {
   display: flex;
   flex-direction: column;
   width: 380px;
-  min-height: 600px;
+  min-height: 550px;
   margin: 0;
   overflow-x: hidden;
   background: var(--page);
@@ -39,7 +39,7 @@ input {
 .hero {
   position: relative;
   overflow: hidden;
-  padding: 14px 18px 12px;
+  padding: 10px 18px 10px;
   background:
     radial-gradient(circle at 92% -12%, rgb(88 101 242 / 55%), transparent 44%),
     linear-gradient(145deg, #242630 5%, #30323d 100%);
@@ -230,6 +230,11 @@ footer {
   color: #d93025;
 }
 
+.source-mark.applemusic {
+  background: #fff0f2;
+  color: #fa243c;
+}
+
 .source-mark.paused {
   background: #eeeff3;
   color: #777b88;
@@ -271,7 +276,7 @@ footer {
 
 .settings {
   margin-top: 7px;
-  padding: 10px 14px 1px;
+  padding: 8px 14px 1px;
 }
 
 .settings-intro {
@@ -290,7 +295,7 @@ footer {
 }
 
 .setting {
-  min-height: 43px;
+  min-height: 38px;
   gap: 12px;
   border-top: 1px solid #ecedf1;
 }
@@ -352,6 +357,10 @@ footer {
 
 .service-dot.youtube {
   background: #e33932;
+}
+
+.service-dot.applemusic {
+  background: #fa243c;
 }
 
 .switch {
