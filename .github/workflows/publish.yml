@@ -1,0 +1,267 @@
+name: Publish stable extension release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version from manifest.json
+        required: true
+        default: 1.0.3
+        type: string
+      confirm_publish:
+        description: Publish the extension release
+        required: true
+        default: false
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: stable-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build, verify, and attest extension zip
+    runs-on: windows-2022
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write      # Required for actions/attest-build-provenance
+      attestations: write  # Required for actions/attest-build-provenance
+    env:
+      CONFIRM_PUBLISH: ${{ inputs.confirm_publish }}
+      RELEASE_VERSION: ${{ inputs.version }}
+    outputs:
+      zip_sha256: ${{ steps.verify-build.outputs.sha256 }}
+    steps:
+      - name: Require main and explicit confirmation
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -cne "refs/heads/main") {
+            throw "Releases must be dispatched from main"
+          }
+          if ($env:CONFIRM_PUBLISH -cne "true") {
+            throw "Publication was not explicitly confirmed"
+          }
+          if ($env:RELEASE_VERSION -notmatch '^\d+\.\d+\.\d+(?:\.\d+)?$') {
+            throw "Release version must be a valid Chrome extension version"
+          }
+
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Match source version and require unused tag
+        shell: pwsh
+        run: |
+          $manifest = Get-Content -Raw -Path manifest.json | ConvertFrom-Json
+          if ($manifest.version -cne $env:RELEASE_VERSION) {
+            throw "Requested $env:RELEASE_VERSION but source is $($manifest.version)"
+          }
+          $tag = "v$env:RELEASE_VERSION"
+          $tagRefs = @(git ls-remote --tags origin "refs/tags/$tag")
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not check whether release tag $tag exists"
+          }
+          if ($tagRefs.Count -ne 0) {
+            throw "Release tag $tag already exists"
+          }
+
+      - name: Validate package tests
+        shell: pwsh
+        run: ./scripts/validate.ps1
+
+      - name: Build zip package
+        shell: pwsh
+        run: ./scripts/package.ps1
+
+      - name: Verify exact build and hash
+        id: verify-build
+        shell: pwsh
+        run: |
+          $expectedName = "chune-id-$env:RELEASE_VERSION.zip"
+          $zipFiles = @(Get-ChildItem -LiteralPath "dist" -File -Filter "*.zip")
+          if ($zipFiles.Count -ne 1 -or $zipFiles[0].Name -cne $expectedName) {
+            throw "Build must produce exactly $expectedName"
+          }
+          $zip = $zipFiles[0].FullName
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
+          "sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "path=$zip" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "Extension ZIP SHA-256: $hash" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+      - name: Generate build provenance attestation
+        uses: actions/attest-build-provenance@1c608d11d69870c2092266b39ce303bd91b2f10b # v1
+        with:
+          subject-path: ${{ steps.verify-build.outputs.path }}
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: extension-release-${{ github.run_id }}
+          path: ${{ steps.verify-build.outputs.path }}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  publish:
+    name: Publish immutable extension release
+    needs: build
+    runs-on: windows-2022
+    timeout-minutes: 15
+    environment: stable-release
+    permissions:
+      actions: read
+      contents: write
+    env:
+      CONFIRM_PUBLISH: ${{ inputs.confirm_publish }}
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - name: Require dispatch from main
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -cne "refs/heads/main" -or $env:CONFIRM_PUBLISH -cne "true") {
+            throw "Release context is invalid"
+          }
+
+      - name: Check out verification source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Download verified zip
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: extension-release-${{ github.run_id }}
+          path: extension-release
+
+      - name: Rehash and reverify publication zip
+        shell: pwsh
+        run: |
+          $expectedName = "chune-id-$env:RELEASE_VERSION.zip"
+          $files = @(Get-ChildItem -LiteralPath "extension-release" -Recurse -File)
+          if ($files.Count -ne 1 -or $files[0].Name -cne $expectedName) {
+            throw "Publication input must contain only $expectedName"
+          }
+          $zip = $files[0].FullName
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
+          if ($hash -cne "${{ needs.build.outputs.zip_sha256 }}") {
+            throw "ZIP changed between build and publication"
+          }
+          "EXTENSION_ZIP=$zip" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "ZIP_SHA256=$hash" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Require unused release identity
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $apiVersion = "2022-11-28"
+          $tag = "v$env:RELEASE_VERSION"
+          $releasePages = gh api --paginate --slurp -H "X-GitHub-Api-Version: $apiVersion" "repos/$env:GITHUB_REPOSITORY/releases?per_page=100" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not check existing releases"
+          }
+          $releaseMatches = @($releasePages | ForEach-Object { $_ } | Where-Object { $_.tag_name -ceq $tag })
+          if ($releaseMatches.Count -ne 0) {
+            throw "A release for $tag already exists"
+          }
+          $tagRefs = @(git ls-remote --tags origin "refs/tags/$tag")
+          if ($LASTEXITCODE -ne 0 -or $tagRefs.Count -ne 0) {
+            throw "Release tag $tag already exists or could not be checked"
+          }
+
+      - name: Atomically create and verify exact tag
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $apiVersion = "2022-11-28"
+          $tag = "v$env:RELEASE_VERSION"
+          $fullRef = "refs/tags/$tag"
+          gh api --method POST -H "X-GitHub-Api-Version: $apiVersion" "repos/$env:GITHUB_REPOSITORY/git/refs" -f "ref=$fullRef" -f "sha=$env:GITHUB_SHA" | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not atomically create $fullRef"
+          }
+          $ref = gh api -H "X-GitHub-Api-Version: $apiVersion" "repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or $ref.ref -cne $fullRef -or $ref.object.type -cne "commit" -or $ref.object.sha -cne $env:GITHUB_SHA) {
+            throw "Created tag does not point exactly to GITHUB_SHA"
+          }
+
+      - name: Create release draft and upload zip
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $apiVersion = "2022-11-28"
+          $tag = "v$env:RELEASE_VERSION"
+          $notes = @"
+          Chune ID $env:RELEASE_VERSION is an update for the Manifest V3 Chrome package.
+
+          **SHA-256: $env:ZIP_SHA256**
+
+          The attached ZIP and this tag become immutable when published. 
+
+          Privacy policy: https://github.com/getchunes/chunes-extension/blob/main/PRIVACY.md
+          "@
+          $release = gh api --method POST -H "X-GitHub-Api-Version: $apiVersion" "repos/$env:GITHUB_REPOSITORY/releases" -f "tag_name=$tag" -f "target_commitish=$env:GITHUB_SHA" -f "name=Chune ID $env:RELEASE_VERSION" -f "body=$notes" -F draft=true -F prerelease=false -f make_latest=true | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or -not $release.id) {
+            throw "Could not create the draft release"
+          }
+          gh release upload $tag $env:EXTENSION_ZIP
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not upload the ZIP without clobbering"
+          }
+          "RELEASE_ID=$($release.id)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Verify draft asset and GitHub digest
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $apiVersion = "2022-11-28"
+          $release = gh api -H "X-GitHub-Api-Version: $apiVersion" "repos/$env:GITHUB_REPOSITORY/releases/$env:RELEASE_ID" | ConvertFrom-Json
+          $expectedName = "chune-id-$env:RELEASE_VERSION.zip"
+          if ($LASTEXITCODE -ne 0 -or $release.draft -ne $true -or $release.prerelease -ne $false) {
+            throw "Release is not the expected draft"
+          }
+          if ($release.assets.Count -ne 1 -or $release.assets[0].name -cne $expectedName -or $release.assets[0].digest -cne "sha256:$env:ZIP_SHA256") {
+            throw "GitHub's uploaded asset digest or identity does not match the ZIP"
+          }
+
+      - name: Reverify tag and publish as latest
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $apiVersion = "2022-11-28"
+          $tag = "v$env:RELEASE_VERSION"
+          $ref = gh api -H "X-GitHub-Api-Version: $apiVersion" "repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or $ref.ref -cne "refs/tags/$tag" -or $ref.object.type -cne "commit" -or $ref.object.sha -cne $env:GITHUB_SHA) {
+            throw "Release tag changed before publication"
+          }
+          gh api --method PATCH -H "X-GitHub-Api-Version: $apiVersion" "repos/$env:GITHUB_REPOSITORY/releases/$env:RELEASE_ID" -F draft=false -F prerelease=false -f make_latest=true | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not publish the release"
+          }
+
+      - name: Require immutable latest release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $apiVersion = "2022-11-28"
+          $release = gh api -H "X-GitHub-Api-Version: $apiVersion" "repos/$env:GITHUB_REPOSITORY/releases/$env:RELEASE_ID" | ConvertFrom-Json
+          $expectedName = "chune-id-$env:RELEASE_VERSION.zip"
+          if ($LASTEXITCODE -ne 0 -or $release.draft -ne $false -or $release.prerelease -ne $false -or $release.immutable -ne $true) {
+            throw "Published release is not a normal immutable release"
+          }
+          if ($release.assets.Count -ne 1 -or $release.assets[0].name -cne $expectedName -or $release.assets[0].digest -cne "sha256:$env:ZIP_SHA256") {
+            throw "Immutable release asset changed"
+          }
+          $latest = gh api -H "X-GitHub-Api-Version: $apiVersion" "repos/$env:GITHUB_REPOSITORY/releases/latest" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or $latest.id -ne [long]$env:RELEASE_ID) {
+            throw "Release was not published as latest"
+          }
