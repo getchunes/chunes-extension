@@ -93,7 +93,7 @@ jobs:
           "Extension ZIP SHA-256: $hash" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
 
       - name: Generate build provenance attestation
-        uses: actions/attest-build-provenance@1c608d11d69870c2092266b39ce303bd91b2f10b # v1
+        uses: actions/attest-build-provenance@v1
         with:
           subject-path: ${{ steps.verify-build.outputs.path }}
 
