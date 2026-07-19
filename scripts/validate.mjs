@@ -96,7 +96,6 @@ if (manifest) {
   const expectedPermissions = ["alarms", "storage"];
   const expectedHosts = [
     "http://127.0.0.1/*",
-    "https://music.apple.com/*",
     "https://soundcloud.com/*",
     "https://www.soundcloud.com/*",
     "https://youtube.com/*",
@@ -188,7 +187,6 @@ check(popupHtml.includes(expectedScriptTag), "popup must use only the packaged p
 check(!/\son[a-z]+\s*=/i.test(popupHtml), "inline HTML event handlers are forbidden");
 check(!/<script[^>]+src=["']https?:/i.test(popupHtml), "remote scripts are forbidden");
 for (const id of [
-  "apple-music",
   "connection-text",
   "enabled",
   "refresh",
@@ -201,7 +199,6 @@ for (const id of [
 }
 check(popupHtml.includes(">SoundCloud</label>"), "SoundCloud label must remain exact");
 check(popupHtml.includes(">YouTube Music</label>"), "YouTube Music label must remain exact");
-check(popupHtml.includes(">Apple Music</label>"), "Apple Music label must remain exact");
 check(
   popupHtml.includes("Choose what Chunes may publish"),
   "popup settings must describe service switches as publish controls",
@@ -221,14 +218,6 @@ check(
 check(
   /data-setting=["']youtubeMusic["'][^>]*\bchecked\b/.test(popupHtml),
   "YouTube Music switch must default to on",
-);
-check(
-  /data-setting=["']appleMusic["'][^>]*\bchecked\b/.test(popupHtml),
-  "Apple Music switch must default to on",
-);
-check(
-  popupHtml.includes("its switch also stops its tab reports"),
-  "popup must disclose that the Apple Music switch stops its tab reports",
 );
 check(popupHtml.includes("127.0.0.1"), "popup must contain the direct local endpoint disclosure");
 check(/>Chune ID privacy<\/a>/.test(popupHtml), "popup must label Chune ID privacy clearly");
@@ -293,18 +282,12 @@ check(!/\beval\s*\(|\bnew Function\s*\(/.test(backgroundSource), "remote-code pr
 const popupSource = readFileSync(join(root, "popup.js"), "utf8");
 check(popupSource.includes('soundcloud: true'), "SoundCloud protocol default must remain true");
 check(popupSource.includes('youtubeMusic: true'), "YouTube Music protocol default must remain true");
-check(popupSource.includes('appleMusic: true'), "Apple Music default must remain true");
 check(
   popupSource.includes('elements.sourceMark.textContent = "YTM";'),
   "YouTube Music source badge must use YTM",
 );
-check(
-  popupSource.includes('elements.sourceMark.textContent = "AM";'),
-  "Apple Music source badge must use AM",
-);
 check(popupSource.includes('"SoundCloud"'), "SoundCloud source label must remain exact");
 check(popupSource.includes('"YouTube Music"'), "YouTube Music source label must remain exact");
-check(popupSource.includes('"Apple Music"'), "Apple Music source label must remain exact");
 check(
   popupSource.includes("(publishing off)"),
   "popup must label a disabled current service as publishing off",

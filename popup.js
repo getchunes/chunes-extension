@@ -1,14 +1,12 @@
 "use strict";
 
 const DEFAULT_SETTINGS = Object.freeze({
-  appleMusic: true,
   enabled: true,
   soundcloud: true,
   youtubeMusic: true,
 });
 
 const elements = {
-  appleMusic: document.querySelector("#apple-music"),
   connection: document.querySelector("#connection"),
   connectionText: document.querySelector("#connection-text"),
   enabled: document.querySelector("#enabled"),
@@ -24,7 +22,6 @@ const settingInputs = [
   elements.enabled,
   elements.soundcloud,
   elements.youtubeMusic,
-  elements.appleMusic,
 ];
 
 let confirmedSettings = { ...DEFAULT_SETTINGS };
@@ -85,8 +82,7 @@ function renderCurrent(status) {
   if (!status.current) {
     elements.sourceMark.textContent = "--";
     elements.sourceName.textContent = "No supported audio";
-    elements.trackTitle.textContent =
-      "Play audio on SoundCloud, YouTube Music or Apple Music.";
+    elements.trackTitle.textContent = "Play audio on SoundCloud or YouTube Music.";
     return;
   }
 
@@ -96,9 +92,6 @@ function renderCurrent(status) {
   } else if (status.current.source === "YouTube Music") {
     elements.sourceMark.classList.add("youtube");
     elements.sourceMark.textContent = "YTM";
-  } else if (status.current.source === "Apple Music") {
-    elements.sourceMark.classList.add("applemusic");
-    elements.sourceMark.textContent = "AM";
   }
 
   if (status.current.publishEnabled === false) {
@@ -119,7 +112,6 @@ function renderStatus(status) {
   elements.enabled.checked = settings.enabled;
   elements.soundcloud.checked = settings.soundcloud;
   elements.youtubeMusic.checked = settings.youtubeMusic;
-  elements.appleMusic.checked = settings.appleMusic;
 
   elements.connection.classList.remove("connected", "disconnected");
   if (status.incompatible === true) {

@@ -230,11 +230,6 @@ footer {
   color: #d93025;
 }
 
-.source-mark.applemusic {
-  background: #ffecf1;
-  color: #fa2d48;
-}
-
 .source-mark.paused {
   background: #eeeff3;
   color: #777b88;
@@ -357,10 +352,6 @@ footer {
 
 .service-dot.youtube {
   background: #e33932;
-}
-
-.service-dot.applemusic {
-  background: #fa2d48;
 }
 
 .switch {
