@@ -85,7 +85,7 @@ function renderCurrent(status) {
   if (!status.current) {
     elements.sourceMark.textContent = "--";
     elements.sourceName.textContent = "No supported audio";
-    elements.trackTitle.textContent = "Play audio on SoundCloud or YouTube Music.";
+    elements.trackTitle.textContent = "Play audio on SoundCloud, YouTube Music, or Apple Music.";
     return;
   }
 
@@ -108,8 +108,10 @@ function renderCurrent(status) {
     status.current.publishEnabled === false
       ? `${status.current.source} (publishing off)`
       : status.current.source;
-  elements.trackTitle.textContent = status.current.title || "Untitled tab";
-  elements.trackTitle.title = status.current.title || "Untitled tab";
+  const displayTitle =
+    status.current.title || `Identifying ${status.current.source} track…`;
+  elements.trackTitle.textContent = displayTitle;
+  elements.trackTitle.title = displayTitle;
 }
 
 function renderStatus(status) {

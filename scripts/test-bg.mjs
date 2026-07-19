@@ -78,8 +78,12 @@ function createDeferred() {
   return { promise, resolve };
 }
 
-function createResponse({ protocol = protocolContract.response.markerValue, status = 204 } = {}) {
-  return {
+function createResponse({
+  protocol = protocolContract.response.markerValue,
+  status = 204,
+  body,
+} = {}) {
+  const response = {
     headers: {
       get(name) {
         return name === protocolContract.response.markerHeader ? protocol : null;
@@ -88,6 +92,10 @@ function createResponse({ protocol = protocolContract.response.markerValue, stat
     ok: status >= 200 && status < 300,
     status,
   };
+  if (body !== undefined) {
+    response.json = async () => body;
+  }
+  return response;
 }
 
 let fetchHandler = async () => createResponse();
@@ -808,6 +816,45 @@ await sendRuntimeMessage({
   type: "update-settings",
   settings: { youtubeMusic: true },
 });
+
+queryResults = [
+  {
+    title: "Album - Album by Artist - Apple Music",
+    url: "https://music.apple.com/us/album/album/12345",
+  },
+];
+fetchHandler = async () =>
+  createResponse({
+    body: { status: "ok", track: "Real Song - Real Artist", host: "music.apple.com" },
+  });
+const appleHostMatchRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(
+  appleHostMatchRefresh.status.current.title,
+  "Real Song - Real Artist",
+  "a host-matched desktop track must be shown for the currently audible Apple Music tab",
+);
+
+fetchHandler = async () =>
+  createResponse({
+    body: { status: "ok", track: "Cloud Song - Cloud Artist", host: "soundcloud.com" },
+  });
+const appleHostMismatchRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(
+  appleHostMismatchRefresh.status.current.title,
+  "",
+  "a desktop track published for a different host must never label the Apple Music tab",
+);
+
+fetchHandler = async () =>
+  createResponse({ body: { status: "ok", track: null, host: null } });
+const appleNoDesktopTrackRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(
+  appleNoDesktopTrackRefresh.status.current.title,
+  "",
+  "Apple Music must show an empty title (popup placeholder) until the app publishes a real track",
+);
+
+fetchHandler = async () => createResponse();
 
 const alarmCreateCount = alarmsCreated.length;
 const alarmGetCount = alarmGets.length;

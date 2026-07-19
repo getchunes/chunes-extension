@@ -240,6 +240,19 @@ function buildReport(settings, classifiedTabs) {
   };
 }
 
+function displayTitle(tab, desktop) {
+  if (desktop && desktop.track && desktop.host === tab.host) {
+    return desktop.track;
+  }
+  // The app isn't currently publishing this tab. SoundCloud's tab title IS
+  // the track and YouTube Music's contains it, but Apple Music's tab title
+  // is the generic "Apple Music - Web Player" and would just be junk here.
+  if (tab.source === "Apple Music") {
+    return "";
+  }
+  return tab.title;
+}
+
 async function postReport(body) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -266,7 +279,10 @@ async function postReport(body) {
     try {
       const data = await response.json();
       if (data && typeof data.track === "string" && data.track.trim()) {
-        return data.track.trim();
+        return {
+          track: data.track.trim(),
+          host: typeof data.host === "string" ? data.host : null,
+        };
       }
     } catch {}
     return null;
@@ -304,9 +320,9 @@ async function performReport() {
   let connectionError = null;
   let incompatible = false;
 
-  let desktopTrack = null;
+  let desktop = null;
   try {
-    desktopTrack = await postReport(body);
+    desktop = await postReport(body);
     connected = true;
   } catch (error) {
     if (error instanceof Error && error.name === "ChunesProtocolError") {
@@ -329,7 +345,7 @@ async function performReport() {
           host: currentTab.host,
           publishEnabled: canPublish(currentTab.source, settings),
           source: currentTab.source,
-          title: desktopTrack || currentTab.title,
+          title: displayTitle(currentTab, desktop),
         }
       : null,
     error: tabError || connectionError,
