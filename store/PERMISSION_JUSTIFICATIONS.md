@@ -11,16 +11,14 @@ that update to the Chunes desktop app on the same computer.
 
 ## `storage`
 
-Chune ID stores only four booleans in `chrome.storage.local`: master enabled,
-SoundCloud enabled, YouTube Music enabled, and Apple Music enabled. All default
-to on. The extension does not use sync storage.
+Chune ID stores only three booleans in `chrome.storage.local`: master enabled,
+SoundCloud enabled, and YouTube Music enabled. All default to on. The extension
+does not use sync storage.
 
 The SoundCloud and YouTube Music values control what the companion may publish,
 not whether local classification occurs. While the master is on, matching
-track data is still sent to local Chunes for suppression when either service is
-disabled. Turning off the Apple Music value also stops Apple Music tabs from
-being reported. Only the master setting stops all tab queries and track
-reporting.
+track data is still sent to local Chunes for suppression when a service is
+disabled. Only the master setting stops tab queries and track reporting.
 
 ## `http://127.0.0.1/*`
 
@@ -30,7 +28,7 @@ host permission to one port, so the manifest declares the loopback host while
 the code fixes both the port and path. Reports use `Content-Type:
 application/json`; this direct extension request does not leave the user's
 computer. Chunes controls the separately disclosed downstream Discord presence
-and optional SoundCloud, YouTube Music, or Apple Music album-art requests.
+and optional SoundCloud or YouTube Music album-art requests.
 
 ## `https://soundcloud.com/*` and `https://www.soundcloud.com/*`
 
@@ -53,14 +51,6 @@ classification or suppression according to the user's local YouTube Music
 setting. Chune ID also derives and validates the watch page's public video ID so
 local Chunes can request exact YouTube Music album art. It does not report the
 full URL.
-
-## `https://music.apple.com/*`
-
-This access lets `chrome.tabs.query` read the URL and title only when a
-currently audible tab is on the Apple Music web player. Chune ID reduces the
-URL to its hostname before the local report so Chunes can attribute otherwise
-unidentifiable browser audio to Apple Music. Tabs on this host are reported
-only while the user's local Apple Music setting is on.
 
 ## Permissions Not Requested
 

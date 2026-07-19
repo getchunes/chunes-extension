@@ -4,13 +4,13 @@ Companion Chrome extension for [Chunes](https://github.com/getchunes/chunes),
 the Windows app that shows supported music listening as Discord presence.
 
 Windows only tells Chunes that "your browser is playing something", never
-which site. Chune ID fills that gap by checking audible SoundCloud, YouTube,
-and Apple Music tabs and reporting their hostname, title, and optional YouTube
-Music video ID to the Chunes app on this computer at `127.0.0.1:52846`.
+which site. Chune ID fills that gap by checking audible SoundCloud and YouTube
+tabs and reporting their hostname, title, and optional YouTube Music video ID
+to the Chunes app on this computer at `127.0.0.1:52846`.
 
 With it installed, Chunes can:
 
-- identify SoundCloud, YouTube Music, and Apple Music playback
+- identify SoundCloud and YouTube Music playback
 - suppress regular YouTube videos instead of treating them as generic music
 - improve supported/blocked overlap handling when browser titles are distinguishable
 
@@ -42,23 +42,20 @@ releases identify their publisher. An unsigned manual release displays
 
 ## Settings
 
-The popup stores these settings only in `chrome.storage.local`. All four are
+The popup stores these settings only in `chrome.storage.local`. All three are
 on by default:
 
 - **Chune ID enabled** controls all audible-tab identification. When off, the extension does not query tabs and sends only a minimal local heartbeat so Chunes can clear browser presence.
 - **SoundCloud** controls whether Chunes may publish SoundCloud presence.
 - **YouTube Music** controls whether Chunes may publish YouTube Music presence.
-- **Apple Music** controls whether Chunes may publish Apple Music presence. Off also stops reporting Apple Music tabs.
 
-The SoundCloud and YouTube Music switches control publishing, not local
-classification. Disabled, they still have their matching host and title sent
-to local Chunes so it can suppress them instead of treating their audio as an
-unknown browser source. YouTube Music reports also include its public video ID
-for exact album art. Apple Music has no flag in the report, so its switch
-works by withholding its tabs entirely; local Chunes then suppresses the
-unidentified browser audio. Only the master switch stops tab queries and track
-reporting. Regular YouTube is always classified as blocked, independently of
-the YouTube Music setting.
+The service switches control publishing, not local classification. Disabled
+services still have their matching host and title sent to local Chunes so it
+can suppress them instead of treating their audio as an unknown browser
+source. YouTube Music reports also include its public video ID for exact album
+art. Only the master switch stops tab queries and track reporting. Regular
+YouTube is always classified as blocked, independently of the YouTube Music
+setting.
 
 ## Local protocol
 
@@ -99,8 +96,8 @@ an incompatible desktop version.
 ## Permissions
 
 - `alarms` keeps desktop classification current while the popup is closed.
-- `storage` saves only the four local boolean settings.
-- Narrow host access for `127.0.0.1`, SoundCloud, YouTube, and Apple Music lets the worker contact Chunes and read URL/title only for supported audible hosts. The worker derives a public video ID from a YouTube Music watch URL but never reports a full URL.
+- `storage` saves only the three local boolean settings.
+- Narrow host access for `127.0.0.1`, SoundCloud, and YouTube lets the worker contact Chunes and read URL/title only for supported audible hosts. The worker derives a public video ID from a YouTube Music watch URL but never reports a full URL.
 
 Chune ID does not request the broad `tabs` permission, inject content scripts,
 or run remote code.
@@ -112,7 +109,7 @@ contacts only Chunes over the HTTP loopback address: it reads audible matching
 tabs, reduces each URL to a hostname and optional YouTube Music video ID, and
 sends that information with the title locally. For enabled sources, Chunes
 sends presence to Discord and may request optional album art from the matching
-SoundCloud, YouTube Music, or Apple Music service. See the
+SoundCloud or YouTube Music service. See the
 [Chune ID Privacy Policy](PRIVACY.md) and the
 [Chunes companion Privacy Policy](https://github.com/getchunes/chunes/blob/main/PRIVACY.md).
 
