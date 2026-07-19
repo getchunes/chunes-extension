@@ -272,6 +272,7 @@ assert.ok(
 assert.deepEqual(queries[0], {
   audible: true,
   url: [
+    "https://music.apple.com/*",
     "https://soundcloud.com/*",
     "https://www.soundcloud.com/*",
     "https://youtube.com/*",

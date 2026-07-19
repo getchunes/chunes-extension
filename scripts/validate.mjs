@@ -80,7 +80,7 @@ if (protocolContract) {
             titleUnicodeCharacters: 512,
           },
           payloadKeys: ["enabled", "services", "tabs"],
-          serviceKeys: ["soundcloud", "youtubeMusic"],
+          serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
           tabKeys: ["host", "mediaId", "title"],
         },
         response: {
