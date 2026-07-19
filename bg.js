@@ -263,6 +263,13 @@ async function postReport(body) {
       error.name = "ChunesProtocolError";
       throw error;
     }
+    try {
+      const data = await response.json();
+      if (data && typeof data.track === "string" && data.track.trim()) {
+        return data.track.trim();
+      }
+    } catch {}
+    return null;
   } finally {
     clearTimeout(timeout);
   }
@@ -297,8 +304,9 @@ async function performReport() {
   let connectionError = null;
   let incompatible = false;
 
+  let desktopTrack = null;
   try {
-    await postReport(body);
+    desktopTrack = await postReport(body);
     connected = true;
   } catch (error) {
     if (error instanceof Error && error.name === "ChunesProtocolError") {
@@ -321,7 +329,7 @@ async function performReport() {
           host: currentTab.host,
           publishEnabled: canPublish(currentTab.source, settings),
           source: currentTab.source,
-          title: currentTab.title,
+          title: desktopTrack || currentTab.title,
         }
       : null,
     error: tabError || connectionError,
