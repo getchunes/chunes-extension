@@ -235,6 +235,7 @@ assert.deepEqual(alarmsCreated[0], {
 });
 assert.deepEqual(stored, {
   enabled: true,
+  appleMusic: true,
   soundcloud: true,
   youtubeMusic: true,
 });
@@ -298,7 +299,7 @@ assert.equal(compatibleDesktopRefresh.status.incompatible, false);
 
 await sendRuntimeMessage({
   type: "update-settings",
-  settings: { soundcloud: false },
+  settings: { appleMusic: false, soundcloud: false },
 });
 assert.equal(lastPostBody().services.soundcloud, false);
 assert.ok(
@@ -325,7 +326,7 @@ await sendRuntimeMessage({
 assert.equal(queries.length, queryCountBeforePause, "master off must not query tabs");
 assert.deepEqual(lastPostBody(), {
   enabled: false,
-  services: { soundcloud: false, youtubeMusic: true },
+  services: { appleMusic: false, soundcloud: false, youtubeMusic: true },
   tabs: [],
 });
 
@@ -425,7 +426,7 @@ await sendRuntimeMessage({
 
 await sendRuntimeMessage({
   type: "update-settings",
-  settings: { soundcloud: false },
+  settings: { appleMusic: false, soundcloud: false },
 });
 queryResults = [
   ...Array.from({ length: 64 }, (_, index) => ({
@@ -460,7 +461,7 @@ assert.equal(priorityRefresh.status.truncatedTitleCount, 0);
 
 await sendRuntimeMessage({
   type: "update-settings",
-  settings: { soundcloud: true },
+  settings: { appleMusic: true, soundcloud: true },
 });
 queryResults = Array.from({ length: 65 }, (_, index) => ({
   title: `Track ${index}`,
@@ -625,7 +626,7 @@ await waitFor(
 const refreshDuringBurst = sendRuntimeMessage({ type: "refresh" });
 const settingDuringBurst = sendRuntimeMessage({
   type: "update-settings",
-  settings: { soundcloud: false },
+  settings: { appleMusic: false, soundcloud: false },
 });
 events.updated.listener(1, { title: "changed" });
 events.updated.listener(1, { audible: true });
