@@ -82,10 +82,11 @@ if (protocolContract) {
           payloadKeys: ["enabled", "services", "tabs"],
           serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
           tabKeys: ["host", "mediaId", "title"],
+          appleTabPlaybackKeys: ["position", "duration", "playing", "sampledAt"],
         },
         response: {
           markerHeader: "X-Chunes-Protocol",
-          markerValue: "2",
+          markerValue: "3",
         },
       }),
     "scripts/protocol-contract.json must exactly match the reviewed protocol",
@@ -282,7 +283,7 @@ check(
 );
 check(
   backgroundSource.includes('const RESPONSE_PROTOCOL_HEADER = "X-Chunes-Protocol";') &&
-    backgroundSource.includes('const RESPONSE_PROTOCOL_VERSION = "2";'),
+    backgroundSource.includes('const RESPONSE_PROTOCOL_VERSION = "3";'),
   "background must require the reviewed desktop response marker",
 );
 check(

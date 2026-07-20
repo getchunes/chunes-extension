@@ -21,10 +21,11 @@ assert.deepEqual(protocolContract, {
     payloadKeys: ["enabled", "services", "tabs"],
     serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
     tabKeys: ["host", "mediaId", "title"],
+    appleTabPlaybackKeys: ["position", "duration", "playing", "sampledAt"],
   },
   response: {
     markerHeader: "X-Chunes-Protocol",
-    markerValue: "2",
+    markerValue: "3",
   },
 });
 const stored = {};
@@ -211,6 +212,7 @@ const runtimeProtocolContract = normalize(
         payloadKeys: ["enabled", "services", "tabs"],
         serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
         tabKeys: ["host", "mediaId", "title"],
+        appleTabPlaybackKeys: APPLE_PLAYBACK_KEYS,
       },
       response: {
         markerHeader: RESPONSE_PROTOCOL_HEADER,
@@ -300,7 +302,7 @@ fetchHandler = async () => createResponse({ protocol: null });
 const legacyDesktopRefresh = await sendRuntimeMessage({ type: "refresh" });
 assert.equal(legacyDesktopRefresh.status.connected, false);
 assert.equal(legacyDesktopRefresh.status.incompatible, true);
-assert.match(legacyDesktopRefresh.status.error, /protocol 2 response required/);
+assert.match(legacyDesktopRefresh.status.error, /protocol 3 response required/);
 
 fetchHandler = async () => createResponse({ protocol: "1" });
 const wrongProtocolRefresh = await sendRuntimeMessage({ type: "refresh" });
@@ -940,6 +942,7 @@ const applePayload = {
   title: "Sample Track",
   sampledAt: 1750000000000,
 };
+const postsBeforeAppleStore = posts.length;
 assert.equal(
   events.message.listener(
     { type: "apple-playback", payload: applePayload },
@@ -960,9 +963,37 @@ assert.deepEqual(
   },
   "a valid Apple playback snapshot must be stored for its tab",
 );
-assert.ok(
-  consoleLogs.some((line) => line.includes("Apple playback (tab 7)")),
-  "the milestone log must confirm playback reached the service worker",
+await waitFor(
+  () => posts.length === postsBeforeAppleStore + 1,
+  "a first playback sample must push a report",
+);
+
+events.message.listener(
+  {
+    type: "apple-playback",
+    payload: { ...applePayload, position: 15.5, sampledAt: 1750000003000 },
+  },
+  appleSender,
+  () => {},
+);
+await delay(30);
+assert.equal(
+  posts.length,
+  postsBeforeAppleStore + 1,
+  "steady playback heartbeats must not push reports",
+);
+
+events.message.listener(
+  {
+    type: "apple-playback",
+    payload: { ...applePayload, position: 100, sampledAt: 1750000006000 },
+  },
+  appleSender,
+  () => {},
+);
+await waitFor(
+  () => posts.length === postsBeforeAppleStore + 2,
+  "a seek must push a report",
 );
 
 events.message.listener(
@@ -1010,6 +1041,61 @@ assert.equal(
   null,
   "closed tabs must drop their stored playback state",
 );
+await delay(20);
+
+queryResults = [
+  {
+    id: 7,
+    title: "Album - Album by Artist - Apple Music",
+    url: "https://music.apple.com/us/album/album/12345",
+  },
+];
+await sendRuntimeMessage({ type: "refresh" });
+assert.deepEqual(
+  lastPostBody().tabs,
+  [
+    {
+      host: "music.apple.com",
+      mediaId: null,
+      title: "Album - Album by Artist - Apple Music",
+      position: 100,
+      duration: 207,
+      playing: true,
+      sampledAt: 1750000006000,
+    },
+  ],
+  "an audible Apple tab must carry its stored playback sample in the report",
+);
+
+queryResults = [
+  {
+    id: 55,
+    title: "Album - Album by Artist - Apple Music",
+    url: "https://music.apple.com/us/album/album/12345",
+  },
+];
+await sendRuntimeMessage({ type: "refresh" });
+assert.deepEqual(
+  lastPostBody().tabs,
+  [
+    {
+      host: "music.apple.com",
+      mediaId: null,
+      title: "Album - Album by Artist - Apple Music",
+    },
+  ],
+  "an Apple tab without a stored sample must report plain tab keys only",
+);
+
+// Leave the suite on a resolved title: an unidentified Apple tab keeps the
+// 2-second identifying retry armed, which would hold the process open.
+queryResults = [
+  {
+    title: "Real Song | YouTube Music",
+    url: "https://music.youtube.com/watch?v=RealSong123",
+  },
+];
+await sendRuntimeMessage({ type: "refresh" });
 await delay(20);
 
 const alarmCreateCount = alarmsCreated.length;
