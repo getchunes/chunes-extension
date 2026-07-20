@@ -240,6 +240,8 @@ function buildReport(settings, classifiedTabs) {
   };
 }
 
+const GENERIC_TAB_TITLES = new Set(["youtube music", "soundcloud", "apple music", "youtube"]);
+
 function displayTitle(tab, desktop) {
   if (desktop && desktop.track && desktop.host === tab.host) {
     return desktop.track;
@@ -247,7 +249,9 @@ function displayTitle(tab, desktop) {
   // The app isn't currently publishing this tab. SoundCloud's tab title IS
   // the track and YouTube Music's contains it, but Apple Music's tab title
   // is the generic "Apple Music - Web Player" and would just be junk here.
-  if (tab.source === "Apple Music") {
+  // YouTube Music's own tab title is just as generic ("YouTube Music") for
+  // a beat right after playback starts, before the page updates it.
+  if (tab.source === "Apple Music" || GENERIC_TAB_TITLES.has(tab.title.trim().toLowerCase())) {
     return "";
   }
   return tab.title;

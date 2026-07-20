@@ -856,6 +856,32 @@ assert.equal(
 
 fetchHandler = async () => createResponse();
 
+queryResults = [
+  {
+    title: "YouTube Music",
+    url: "https://music.youtube.com/watch?v=stillLoading",
+  },
+];
+const ytmGenericTitleRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(
+  ytmGenericTitleRefresh.status.current.title,
+  "",
+  "YouTube Music's own generic placeholder title must not be shown as if it were a real track",
+);
+
+queryResults = [
+  {
+    title: "Real Song | YouTube Music",
+    url: "https://music.youtube.com/watch?v=realTrack",
+  },
+];
+const ytmRealTitleRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(
+  ytmRealTitleRefresh.status.current.title,
+  "Real Song | YouTube Music",
+  "a real YouTube Music tab title must still be shown once the page has updated it",
+);
+
 const alarmCreateCount = alarmsCreated.length;
 const alarmGetCount = alarmGets.length;
 const secondContext = vm.createContext({
