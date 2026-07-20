@@ -7,7 +7,7 @@ Chrome 120 or newer. No extension account, paid subscription, or test
 credentials are required. Testing Discord presence requires the Discord desktop
 app to be running and signed in with **Share my activity** enabled.
 
-1. Start the signed-in Discord desktop app, then install and start Chunes desktop 1.0.1 from https://github.com/getchunes/chunes/releases/tag/v1.0.1. Check that release's trust notice: a signed stable MSI identifies its publisher, while an explicitly labeled unsigned manual build displays **Unknown publisher**. Every release, tag, and sole MSI is immutable. Its local extension endpoint listens at `127.0.0.1:52846`.
+1. Start the signed-in Discord desktop app, then install and start the latest Chunes desktop release from https://github.com/getchunes/chunes/releases/latest. Check that release's trust notice: a signed stable MSI identifies its publisher, while an explicitly labeled unsigned manual build displays **Unknown publisher**. Every release, tag, and sole MSI is immutable. Its local extension endpoint listens at `127.0.0.1:52846`.
 2. Install Chune ID and click its toolbar icon. Click **Refresh**; the popup should show **Chunes desktop connected**.
 3. Play a public SoundCloud track from `https://soundcloud.com/`, then refresh. The popup should show **SoundCloud** and the audible tab title.
 4. Play a public audio track from `https://music.youtube.com/`, then refresh. The popup should show **YouTube Music**, a **YTM** badge, and the audible tab title. With online album art enabled in Chunes, an audio track with available album metadata should use square YouTube Music artwork rather than a generic video thumbnail; video-style tracks without square music artwork may use the fallback Chunes image.

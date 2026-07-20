@@ -41,6 +41,6 @@ submission is the separate 1.0.5 real-track-display update and must use a
 newly built `chune-id-1.0.5.zip` with SHA-256
 `d89d2ddc6bc0425070440f340a858e985b124b0d4665428c0338dd417dceed1f`.
 
-Chunes desktop 1.0.1 is the matching protocol-2 companion. Its release-specific
+The latest Chunes desktop release is the matching protocol-2 companion. Its release-specific
 notice labels the immutable MSI as an unsigned manual release. Chrome reviewers
 should expect **Unknown publisher** for that explicitly labeled companion build.

@@ -47,7 +47,7 @@ using its public video ID, or search Apple's public iTunes Search API with
 title/artist for Apple Music artwork. See both privacy policies below.
 
 Requires the Chunes Windows companion app. Chunes is available from:
-https://github.com/getchunes/chunes/releases/tag/v1.0.1
+https://github.com/getchunes/chunes/releases/latest
 
 Check the selected Chunes release's trust notice before installation. Signed
 releases identify their publisher. An unsigned manual release displays
@@ -69,7 +69,7 @@ presence and suppress regular YouTube audio.
 - Privacy policy: https://github.com/getchunes/chunes-extension/blob/main/PRIVACY.md
 - Companion privacy: https://github.com/getchunes/chunes/blob/main/PRIVACY.md
 - Support: https://github.com/getchunes/chunes-extension/issues
-- Companion app: https://github.com/getchunes/chunes/releases/tag/v1.0.1
+- Companion app: https://github.com/getchunes/chunes/releases/latest
 
 ## Assets
 
