@@ -3,6 +3,7 @@
 const ENDPOINT = "http://127.0.0.1:52846/tabs";
 const REPORT_ALARM = "report-audible-tabs";
 const REPORT_PERIOD_MINUTES = 0.5;
+const IDENTIFYING_RETRY_MS = 2000;
 const REQUEST_TIMEOUT_MS = 3000;
 const REQUEST_CONTENT_TYPE = "application/json";
 const RESPONSE_PROTOCOL_HEADER = "X-Chunes-Protocol";
@@ -33,6 +34,7 @@ let readyPromise;
 let activeReport;
 let queuedInteractiveReport;
 let backgroundReportPending = false;
+let identifyingRetryTimer;
 let lastStatus = {
   connected: null,
   current: null,
@@ -160,6 +162,24 @@ function notifyPopup(status) {
     { type: "status-updated", status },
     () => void chrome.runtime.lastError,
   );
+}
+
+function scheduleIdentifyingRetry(status) {
+  if (identifyingRetryTimer) {
+    clearTimeout(identifyingRetryTimer);
+    identifyingRetryTimer = undefined;
+  }
+  // A supported tab is audible but the desktop app hasn't published a
+  // matching track yet. Nothing else prompts another check until the tab
+  // itself changes again or the next alarm tick (up to REPORT_PERIOD_MINUTES
+  // later), so the popup would otherwise sit on "Identifying..." long after
+  // the app has actually resolved it.
+  if (status.connected && status.current && status.current.title === "") {
+    identifyingRetryTimer = setTimeout(() => {
+      identifyingRetryTimer = undefined;
+      reportInBackground();
+    }, IDENTIFYING_RETRY_MS);
+  }
 }
 
 function truncateTitle(title) {
@@ -363,6 +383,7 @@ async function performReport() {
   };
 
   notifyPopup(lastStatus);
+  scheduleIdentifyingRetry(lastStatus);
   return lastStatus;
 }
 

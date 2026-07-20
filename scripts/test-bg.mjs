@@ -100,8 +100,8 @@ function createResponse({
 
 let fetchHandler = async () => createResponse();
 
-async function waitFor(predicate, message) {
-  for (let attempt = 0; attempt < 200; attempt += 1) {
+async function waitFor(predicate, message, attempts = 200) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
     if (predicate()) {
       return;
     }
@@ -852,6 +852,41 @@ assert.equal(
   appleNoDesktopTrackRefresh.status.current.title,
   "",
   "Apple Music must show an empty title (popup placeholder) until the app publishes a real track",
+);
+
+fetchHandler = async () => createResponse();
+
+queryResults = [
+  {
+    title: "Album - Album by Artist - Apple Music",
+    url: "https://music.apple.com/us/album/album/55555",
+  },
+];
+const identifyingRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(
+  identifyingRefresh.status.current.title,
+  "",
+  "sanity: an unmatched Apple Music tab starts in the identifying state",
+);
+
+const postCountBeforeIdentifyingRetry = posts.length;
+fetchHandler = async () =>
+  createResponse({
+    body: {
+      status: "ok",
+      track: "Resolved Song - Resolved Artist",
+      host: "music.apple.com",
+    },
+  });
+await waitFor(
+  () => posts.length === postCountBeforeIdentifyingRetry + 1,
+  "an unresolved tab must automatically retry once the app may have resolved it",
+  500,
+);
+assert.equal(
+  notifications.at(-1).status.current.title,
+  "Resolved Song - Resolved Artist",
+  "the automatic retry must pick up the desktop track once it resolves",
 );
 
 fetchHandler = async () => createResponse();
