@@ -21,16 +21,13 @@ extension does not guarantee correct attribution in those cases.
 ## Requirements
 
 - Google Chrome 120 or a compatible Chromium browser with Manifest V3 support
-- Windows with [Chunes desktop 1.0.1](https://github.com/getchunes/chunes/releases/tag/v1.0.1) running for protocol-2 presence reporting
+- Windows with [Chunes desktop](https://github.com/getchunes/chunes/releases/latest) running for protocol-2 presence reporting
 
 ## Install
 
-Chrome Web Store version 1.0.0 has been submitted. This repository now targets
-the 1.0.2 update.
+Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/chune-id/ofbfkbhgfhoapckgjcpmcohbhnogpfjd), or load it manually from source:
 
-To load the extension manually:
-
-1. Install Chunes 1.0.1 using the MSI from its [matching release](https://github.com/getchunes/chunes/releases/tag/v1.0.1).
+1. Install Chunes using the MSI from its [latest release](https://github.com/getchunes/chunes/releases/latest).
 2. Clone this repository.
 3. Open `chrome://extensions` (or `brave://extensions`).
 4. Enable Developer mode, choose **Load unpacked**, and select this repository's root folder.
