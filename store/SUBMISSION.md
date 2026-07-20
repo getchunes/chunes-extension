@@ -11,7 +11,7 @@ copy:
 
 ## Reviewed Runtime Contract
 
-- Manifest V3, version 1.0.4, minimum Chrome version 120
+- Manifest V3, version 1.0.5, minimum Chrome version 120
 - Permissions limited to `alarms`, `storage`, loopback, SoundCloud, YouTube, and Apple Music hosts
 - `application/json` POSTs to `http://127.0.0.1:52846/tabs`
 - Exact top-level payload keys: `enabled`, `services`, and `tabs`
@@ -36,10 +36,10 @@ title/artist for Apple Music artwork. Use both public policies in the dashboard:
 ## Release Coordination
 
 Version 1.0.0 has already been submitted to the Chrome Web Store. The immutable
-1.0.0, 1.0.1, 1.0.2, and 1.0.3 GitHub artifacts remain unchanged. This
-submission is the separate 1.0.4 popup-restore and Apple Music disclosure update
-and must use a newly built `chune-id-1.0.4.zip` with SHA-256
-`1967c5879262c3bd0f5f0d8f8f29a170d4837cb3acd84ae37a5da12569a7fe38`.
+1.0.0, 1.0.1, 1.0.2, 1.0.3, and 1.0.4 GitHub artifacts remain unchanged. This
+submission is the separate 1.0.5 real-track-display update and must use a
+newly built `chune-id-1.0.5.zip` with SHA-256
+`d89d2ddc6bc0425070440f340a858e985b124b0d4665428c0338dd417dceed1f`.
 
 Chunes desktop 1.0.1 is the matching protocol-2 companion. Its release-specific
 notice labels the immutable MSI as an unsigned manual release. Chrome reviewers
