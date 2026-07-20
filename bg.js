@@ -3,6 +3,7 @@
 const ENDPOINT = "http://127.0.0.1:52846/tabs";
 const REPORT_ALARM = "report-audible-tabs";
 const REPORT_PERIOD_MINUTES = 0.5;
+const IDENTIFYING_RETRY_MS = 2000;
 const REQUEST_TIMEOUT_MS = 3000;
 const REQUEST_CONTENT_TYPE = "application/json";
 const RESPONSE_PROTOCOL_HEADER = "X-Chunes-Protocol";
@@ -33,6 +34,7 @@ let readyPromise;
 let activeReport;
 let queuedInteractiveReport;
 let backgroundReportPending = false;
+let identifyingRetryTimer;
 let lastStatus = {
   connected: null,
   current: null,
@@ -162,6 +164,24 @@ function notifyPopup(status) {
   );
 }
 
+function scheduleIdentifyingRetry(status) {
+  if (identifyingRetryTimer) {
+    clearTimeout(identifyingRetryTimer);
+    identifyingRetryTimer = undefined;
+  }
+  // A supported tab is audible but the desktop app hasn't published a
+  // matching track yet. Nothing else prompts another check until the tab
+  // itself changes again or the next alarm tick (up to REPORT_PERIOD_MINUTES
+  // later), so the popup would otherwise sit on "Identifying..." long after
+  // the app has actually resolved it.
+  if (status.connected && status.current && status.current.title === "") {
+    identifyingRetryTimer = setTimeout(() => {
+      identifyingRetryTimer = undefined;
+      reportInBackground();
+    }, IDENTIFYING_RETRY_MS);
+  }
+}
+
 function truncateTitle(title) {
   let truncatedTitle = "";
   let characterCount = 0;
@@ -240,6 +260,23 @@ function buildReport(settings, classifiedTabs) {
   };
 }
 
+const GENERIC_TAB_TITLES = new Set(["youtube music", "soundcloud", "apple music", "youtube"]);
+
+function displayTitle(tab, desktop) {
+  if (desktop && desktop.track && desktop.host === tab.host) {
+    return desktop.track;
+  }
+  // The app isn't currently publishing this tab. SoundCloud's tab title IS
+  // the track and YouTube Music's contains it, but Apple Music's tab title
+  // is the generic "Apple Music - Web Player" and would just be junk here.
+  // YouTube Music's own tab title is just as generic ("YouTube Music") for
+  // a beat right after playback starts, before the page updates it.
+  if (tab.source === "Apple Music" || GENERIC_TAB_TITLES.has(tab.title.trim().toLowerCase())) {
+    return "";
+  }
+  return tab.title;
+}
+
 async function postReport(body) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -263,6 +300,16 @@ async function postReport(body) {
       error.name = "ChunesProtocolError";
       throw error;
     }
+    try {
+      const data = await response.json();
+      if (data && typeof data.track === "string" && data.track.trim()) {
+        return {
+          track: data.track.trim(),
+          host: typeof data.host === "string" ? data.host : null,
+        };
+      }
+    } catch {}
+    return null;
   } finally {
     clearTimeout(timeout);
   }
@@ -297,8 +344,9 @@ async function performReport() {
   let connectionError = null;
   let incompatible = false;
 
+  let desktop = null;
   try {
-    await postReport(body);
+    desktop = await postReport(body);
     connected = true;
   } catch (error) {
     if (error instanceof Error && error.name === "ChunesProtocolError") {
@@ -321,7 +369,7 @@ async function performReport() {
           host: currentTab.host,
           publishEnabled: canPublish(currentTab.source, settings),
           source: currentTab.source,
-          title: currentTab.title,
+          title: displayTitle(currentTab, desktop),
         }
       : null,
     error: tabError || connectionError,
@@ -335,6 +383,7 @@ async function performReport() {
   };
 
   notifyPopup(lastStatus);
+  scheduleIdentifyingRetry(lastStatus);
   return lastStatus;
 }
 

@@ -78,8 +78,12 @@ function createDeferred() {
   return { promise, resolve };
 }
 
-function createResponse({ protocol = protocolContract.response.markerValue, status = 204 } = {}) {
-  return {
+function createResponse({
+  protocol = protocolContract.response.markerValue,
+  status = 204,
+  body,
+} = {}) {
+  const response = {
     headers: {
       get(name) {
         return name === protocolContract.response.markerHeader ? protocol : null;
@@ -88,12 +92,16 @@ function createResponse({ protocol = protocolContract.response.markerValue, stat
     ok: status >= 200 && status < 300,
     status,
   };
+  if (body !== undefined) {
+    response.json = async () => body;
+  }
+  return response;
 }
 
 let fetchHandler = async () => createResponse();
 
-async function waitFor(predicate, message) {
-  for (let attempt = 0; attempt < 200; attempt += 1) {
+async function waitFor(predicate, message, attempts = 200) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
     if (predicate()) {
       return;
     }
@@ -808,6 +816,106 @@ await sendRuntimeMessage({
   type: "update-settings",
   settings: { youtubeMusic: true },
 });
+
+queryResults = [
+  {
+    title: "Album - Album by Artist - Apple Music",
+    url: "https://music.apple.com/us/album/album/12345",
+  },
+];
+fetchHandler = async () =>
+  createResponse({
+    body: { status: "ok", track: "Real Song - Real Artist", host: "music.apple.com" },
+  });
+const appleHostMatchRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(
+  appleHostMatchRefresh.status.current.title,
+  "Real Song - Real Artist",
+  "a host-matched desktop track must be shown for the currently audible Apple Music tab",
+);
+
+fetchHandler = async () =>
+  createResponse({
+    body: { status: "ok", track: "Cloud Song - Cloud Artist", host: "soundcloud.com" },
+  });
+const appleHostMismatchRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(
+  appleHostMismatchRefresh.status.current.title,
+  "",
+  "a desktop track published for a different host must never label the Apple Music tab",
+);
+
+fetchHandler = async () =>
+  createResponse({ body: { status: "ok", track: null, host: null } });
+const appleNoDesktopTrackRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(
+  appleNoDesktopTrackRefresh.status.current.title,
+  "",
+  "Apple Music must show an empty title (popup placeholder) until the app publishes a real track",
+);
+
+fetchHandler = async () => createResponse();
+
+queryResults = [
+  {
+    title: "Album - Album by Artist - Apple Music",
+    url: "https://music.apple.com/us/album/album/55555",
+  },
+];
+const identifyingRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(
+  identifyingRefresh.status.current.title,
+  "",
+  "sanity: an unmatched Apple Music tab starts in the identifying state",
+);
+
+const postCountBeforeIdentifyingRetry = posts.length;
+fetchHandler = async () =>
+  createResponse({
+    body: {
+      status: "ok",
+      track: "Resolved Song - Resolved Artist",
+      host: "music.apple.com",
+    },
+  });
+await waitFor(
+  () => posts.length === postCountBeforeIdentifyingRetry + 1,
+  "an unresolved tab must automatically retry once the app may have resolved it",
+  500,
+);
+assert.equal(
+  notifications.at(-1).status.current.title,
+  "Resolved Song - Resolved Artist",
+  "the automatic retry must pick up the desktop track once it resolves",
+);
+
+fetchHandler = async () => createResponse();
+
+queryResults = [
+  {
+    title: "YouTube Music",
+    url: "https://music.youtube.com/watch?v=stillLoading",
+  },
+];
+const ytmGenericTitleRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(
+  ytmGenericTitleRefresh.status.current.title,
+  "",
+  "YouTube Music's own generic placeholder title must not be shown as if it were a real track",
+);
+
+queryResults = [
+  {
+    title: "Real Song | YouTube Music",
+    url: "https://music.youtube.com/watch?v=realTrack",
+  },
+];
+const ytmRealTitleRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(
+  ytmRealTitleRefresh.status.current.title,
+  "Real Song | YouTube Music",
+  "a real YouTube Music tab title must still be shown once the page has updated it",
+);
 
 const alarmCreateCount = alarmsCreated.length;
 const alarmGetCount = alarmGets.length;
