@@ -30,6 +30,7 @@ assert.deepEqual(protocolContract, {
 const stored = {};
 const alarmGets = [];
 const alarmsCreated = [];
+const consoleLogs = [];
 const notifications = [];
 const posts = [];
 const queries = [];
@@ -182,7 +183,12 @@ const context = vm.createContext({
   URL,
   chrome,
   clearTimeout,
-  console: { warn() {} },
+  console: {
+    log(...values) {
+      consoleLogs.push(values.map(String).join(" "));
+    },
+    warn() {},
+  },
   fetch: async (url, options) => {
     posts.push({ options: { ...options }, url });
     return fetchHandler(url, options);
@@ -916,6 +922,95 @@ assert.equal(
   "Real Song | YouTube Music",
   "a real YouTube Music tab title must still be shown once the page has updated it",
 );
+
+function applePlaybackEntry(tabId) {
+  return normalize(
+    vm.runInContext(`applePlaybackByTab.get(${tabId}) ?? null`, context),
+  );
+}
+
+const appleSender = {
+  tab: { id: 7 },
+  url: "https://music.apple.com/us/album/sample/123",
+};
+const applePayload = {
+  position: 12.5,
+  duration: 207,
+  playing: true,
+  title: "Sample Track",
+  sampledAt: 1750000000000,
+};
+assert.equal(
+  events.message.listener(
+    { type: "apple-playback", payload: applePayload },
+    appleSender,
+    () => {},
+  ),
+  false,
+  "apple-playback must not hold the response channel open",
+);
+assert.deepEqual(
+  applePlaybackEntry(7),
+  {
+    position: 12.5,
+    duration: 207,
+    playing: true,
+    title: "Sample Track",
+    sampledAt: 1750000000000,
+  },
+  "a valid Apple playback snapshot must be stored for its tab",
+);
+assert.ok(
+  consoleLogs.some((line) => line.includes("Apple playback (tab 7)")),
+  "the milestone log must confirm playback reached the service worker",
+);
+
+events.message.listener(
+  { type: "apple-playback", payload: applePayload },
+  { tab: { id: 8 }, url: "https://soundcloud.com/artist/track" },
+  () => {},
+);
+assert.equal(applePlaybackEntry(8), null, "non-Apple senders must be ignored");
+
+events.message.listener(
+  { type: "apple-playback", payload: { ...applePayload, position: -1 } },
+  { ...appleSender, tab: { id: 9 } },
+  () => {},
+);
+events.message.listener(
+  { type: "apple-playback", payload: { ...applePayload, sampledAt: "now" } },
+  { ...appleSender, tab: { id: 9 } },
+  () => {},
+);
+assert.equal(applePlaybackEntry(9), null, "invalid playback payloads must be ignored");
+
+events.message.listener(
+  {
+    type: "apple-playback",
+    payload: {
+      position: 3,
+      duration: -5,
+      playing: "yes",
+      title: 42,
+      sampledAt: 1750000000001,
+    },
+  },
+  { ...appleSender, tab: { id: 10 } },
+  () => {},
+);
+assert.deepEqual(
+  applePlaybackEntry(10),
+  { position: 3, duration: null, playing: false, title: "", sampledAt: 1750000000001 },
+  "malformed optional playback fields must be normalized, not trusted",
+);
+
+events.removed.listener(10, {});
+assert.equal(
+  applePlaybackEntry(10),
+  null,
+  "closed tabs must drop their stored playback state",
+);
+await delay(20);
 
 const alarmCreateCount = alarmsCreated.length;
 const alarmGetCount = alarmGets.length;

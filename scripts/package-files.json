@@ -2,6 +2,8 @@
   "LICENSE",
   "PRIVACY.md",
   "THIRD_PARTY_NOTICES.md",
+  "apple-bridge.js",
+  "apple-inject.js",
   "bg.js",
   "icons/action-16.png",
   "icons/action-32.png",

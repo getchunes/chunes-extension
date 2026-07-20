@@ -18,6 +18,20 @@
   "background": {
     "service_worker": "bg.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["https://music.apple.com/*"],
+      "js": ["apple-inject.js"],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://music.apple.com/*"],
+      "js": ["apple-bridge.js"],
+      "run_at": "document_idle",
+      "world": "ISOLATED"
+    }
+  ],
   "action": {
     "default_title": "Open Chune ID",
     "default_popup": "popup.html",

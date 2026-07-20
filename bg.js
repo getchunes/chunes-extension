@@ -11,6 +11,8 @@ const RESPONSE_PROTOCOL_VERSION = "2";
 const MAX_REPORTED_TABS = 64;
 const MAX_TITLE_CHARACTERS = 512;
 const MAX_REQUEST_BYTES = 32 * 1024;
+const APPLE_PLAYBACK_HOST = "music.apple.com";
+const MAX_PLAYBACK_SECONDS = 24 * 60 * 60;
 const textEncoder = new TextEncoder();
 const DEFAULT_SETTINGS = Object.freeze({
   enabled: true,
@@ -29,6 +31,7 @@ const SUPPORTED_URL_PATTERNS = Object.freeze([
   "https://music.youtube.com/*",
 ]);
 
+const applePlaybackByTab = new Map();
 let cachedSettings = { ...DEFAULT_SETTINGS };
 let readyPromise;
 let activeReport;
@@ -481,7 +484,57 @@ async function updateSettings(patch) {
   return requestReport();
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+function readPlaybackNumber(value, maximum) {
+  return typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= 0 &&
+    value <= maximum
+    ? value
+    : null;
+}
+
+function isAppleSender(sender) {
+  if (!sender || typeof sender.tab?.id !== "number") {
+    return false;
+  }
+
+  try {
+    return new URL(sender.url).hostname.toLowerCase() === APPLE_PLAYBACK_HOST;
+  } catch {
+    return false;
+  }
+}
+
+function storeApplePlayback(sender, payload) {
+  if (!isAppleSender(sender) || !payload || typeof payload !== "object") {
+    return;
+  }
+
+  const position = readPlaybackNumber(payload.position, MAX_PLAYBACK_SECONDS);
+  const sampledAt = readPlaybackNumber(payload.sampledAt, Number.MAX_SAFE_INTEGER);
+  if (position === null || sampledAt === null) {
+    return;
+  }
+
+  const playback = {
+    position,
+    duration: readPlaybackNumber(payload.duration, MAX_PLAYBACK_SECONDS),
+    playing: payload.playing === true,
+    title: typeof payload.title === "string" ? truncateTitle(payload.title).title : "",
+    sampledAt,
+  };
+  applePlaybackByTab.set(sender.tab.id, playback);
+  // Milestone check only: confirms MusicKit timing reaches the service
+  // worker. The report protocol does not carry these fields yet.
+  console.log(`Apple playback (tab ${sender.tab.id}):`, playback);
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "apple-playback") {
+    storeApplePlayback(sender, message.payload);
+    return false;
+  }
+
   if (message?.type === "refresh") {
     requestReport()
       .then((status) => sendResponse({ ok: true, status }))
@@ -529,7 +582,8 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
   }
 });
 
-chrome.tabs.onRemoved.addListener(() => {
+chrome.tabs.onRemoved.addListener((tabId) => {
+  applePlaybackByTab.delete(tabId);
   reportInBackground();
 });
 

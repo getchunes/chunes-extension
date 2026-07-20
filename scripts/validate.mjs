@@ -131,7 +131,24 @@ if (manifest) {
       JSON.stringify(expectedHosts.sort()),
     "host_permissions do not match the reviewed narrow host list",
   );
-  check(!manifest.content_scripts, "content scripts are not part of the reviewed runtime");
+  check(
+    JSON.stringify(manifest.content_scripts) ===
+      JSON.stringify([
+        {
+          matches: ["https://music.apple.com/*"],
+          js: ["apple-inject.js"],
+          run_at: "document_idle",
+          world: "MAIN",
+        },
+        {
+          matches: ["https://music.apple.com/*"],
+          js: ["apple-bridge.js"],
+          run_at: "document_idle",
+          world: "ISOLATED",
+        },
+      ]),
+    "content scripts must be exactly the reviewed Apple Music timing pair",
+  );
   check(
     manifest.background?.service_worker === "bg.js",
     "background service worker must be bg.js",
@@ -159,13 +176,14 @@ if (manifest) {
     manifest.action?.default_popup,
     ...Object.values(manifest.action?.default_icon || {}),
     ...Object.values(manifest.icons || {}),
+    ...(manifest.content_scripts || []).flatMap((script) => script.js || []),
   ].filter(Boolean);
   for (const relativePath of manifestReferences) {
     checkFile(relativePath);
   }
 }
 
-for (const relativePath of ["bg.js", "popup.js"]) {
+for (const relativePath of ["apple-bridge.js", "apple-inject.js", "bg.js", "popup.js"]) {
   const result = spawnSync(process.execPath, ["--check", join(root, relativePath)], {
     encoding: "utf8",
   });
@@ -292,6 +310,47 @@ check(
   "background reporting must not use the unbounded report-cycle loop",
 );
 check(!/\beval\s*\(|\bnew Function\s*\(/.test(backgroundSource), "remote-code primitives are forbidden");
+check(
+  backgroundSource.includes('const APPLE_PLAYBACK_HOST = "music.apple.com";') &&
+    backgroundSource.includes("applePlaybackByTab.delete(tabId)"),
+  "background must restrict Apple playback to music.apple.com and drop closed tabs",
+);
+
+const appleInjectSource = readFileSync(join(root, "apple-inject.js"), "utf8");
+const appleBridgeSource = readFileSync(join(root, "apple-bridge.js"), "utf8");
+for (const [name, appleSource] of [
+  ["apple-inject.js", appleInjectSource],
+  ["apple-bridge.js", appleBridgeSource],
+]) {
+  check(
+    !/\beval\s*\(|\bnew Function\s*\(/.test(appleSource),
+    `remote-code primitives are forbidden in ${name}`,
+  );
+  check(
+    !/\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b/.test(appleSource),
+    `network primitives are forbidden in ${name}`,
+  );
+  check(
+    appleSource.includes('const CHANNEL = "chune-id-apple";'),
+    `${name} must use the reviewed relay channel name`,
+  );
+}
+check(
+  appleInjectSource.includes("window.postMessage(snapshot, window.location.origin)"),
+  "the MAIN world script may only post snapshots to its own origin",
+);
+check(
+  !/\bchrome\s*\./.test(appleInjectSource),
+  "the MAIN world script must not touch extension APIs",
+);
+check(
+  appleBridgeSource.includes("event.source !== window || event.origin !== window.location.origin"),
+  "the bridge must reject messages from other windows and origins",
+);
+check(
+  appleBridgeSource.includes('{ type: "apple-playback", payload }'),
+  "the bridge may only relay the reviewed apple-playback message",
+);
 
 const popupSource = readFileSync(join(root, "popup.js"), "utf8");
 check(popupSource.includes('soundcloud: true'), "SoundCloud protocol default must remain true");
@@ -326,6 +385,8 @@ const expectedPackageFiles = [
   "LICENSE",
   "PRIVACY.md",
   "THIRD_PARTY_NOTICES.md",
+  "apple-bridge.js",
+  "apple-inject.js",
   "bg.js",
   "icons/action-16.png",
   "icons/action-32.png",
