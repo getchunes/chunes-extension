@@ -5,6 +5,13 @@
 // Page messages are untrusted input: everything is revalidated here before it
 // leaves the content script.
 (() => {
+  // The service worker may inject this into an already-open tab that also
+  // received it from the manifest; relay from a single listener per page.
+  if (window.__chuneIdAppleBridge) {
+    return;
+  }
+  window.__chuneIdAppleBridge = true;
+
   const CHANNEL = "chune-id-apple";
   const MAX_TITLE_CHARACTERS = 512;
   const MAX_DURATION_SECONDS = 24 * 60 * 60;

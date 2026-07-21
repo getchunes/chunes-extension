@@ -94,7 +94,7 @@ if (protocolContract) {
 }
 
 if (manifest) {
-  const expectedPermissions = ["alarms", "storage"];
+  const expectedPermissions = ["alarms", "scripting", "storage"];
   const expectedHosts = [
     "http://127.0.0.1/*",
     "https://music.apple.com/*",
@@ -116,7 +116,7 @@ if (manifest) {
   check(
     JSON.stringify([...(manifest.permissions || [])].sort()) ===
       JSON.stringify(expectedPermissions.sort()),
-    "permissions must contain only alarms and storage",
+    "permissions must contain only alarms, scripting, and storage",
   );
   check(!(manifest.permissions || []).includes("tabs"), "broad tabs permission is forbidden");
   check(
@@ -316,6 +316,20 @@ check(
     backgroundSource.includes("applePlaybackByTab.delete(tabId)"),
   "background must restrict Apple playback to music.apple.com and drop closed tabs",
 );
+check(
+  backgroundSource.includes('chrome.tabs.query({ url: "https://music.apple.com/*" })') &&
+    backgroundSource.includes("chrome.scripting.executeScript"),
+  "install injection must script only already-open music.apple.com tabs",
+);
+for (const [name, appleSource] of [
+  ["apple-inject.js", readFileSync(join(root, "apple-inject.js"), "utf8")],
+  ["apple-bridge.js", readFileSync(join(root, "apple-bridge.js"), "utf8")],
+]) {
+  check(
+    /if \(window\.__chuneIdApple\w+\) \{\s*\n\s*return;/.test(appleSource),
+    `${name} must guard against running twice in one page`,
+  );
+}
 
 const appleInjectSource = readFileSync(join(root, "apple-inject.js"), "utf8");
 const appleBridgeSource = readFileSync(join(root, "apple-bridge.js"), "utf8");

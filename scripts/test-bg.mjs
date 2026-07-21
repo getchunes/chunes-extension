@@ -33,6 +33,7 @@ const alarmGets = [];
 const alarmsCreated = [];
 const consoleLogs = [];
 const notifications = [];
+const scriptInjections = [];
 const posts = [];
 const queries = [];
 let existingAlarm;
@@ -142,6 +143,11 @@ const chrome = {
     sendMessage(message, callback) {
       notifications.push(normalize(message));
       callback?.();
+    },
+  },
+  scripting: {
+    async executeScript(injection) {
+      scriptInjections.push(normalize(injection));
     },
   },
   storage: {
@@ -1042,6 +1048,28 @@ assert.equal(
   "closed tabs must drop their stored playback state",
 );
 await delay(20);
+
+queryResults = [
+  { id: 77, title: "Apple Music", url: "https://music.apple.com/us/browse" },
+  { title: "Apple Music", url: "https://music.apple.com/us/album/no-id/1" },
+  { id: 88, title: "Apple Music", url: "https://music.apple.com/us/album/other/2" },
+];
+scriptInjections.length = 0;
+events.installed.listener({ reason: "update" });
+await waitFor(
+  () => scriptInjections.length === 4,
+  "install must inject the timing pair into each open Apple tab that has an id",
+);
+assert.deepEqual(
+  scriptInjections,
+  [
+    { target: { tabId: 77 }, files: ["apple-bridge.js"], world: "ISOLATED" },
+    { target: { tabId: 77 }, files: ["apple-inject.js"], world: "MAIN" },
+    { target: { tabId: 88 }, files: ["apple-bridge.js"], world: "ISOLATED" },
+    { target: { tabId: 88 }, files: ["apple-inject.js"], world: "MAIN" },
+  ],
+  "the bridge must be injected before the reader, and only into id-bearing tabs",
+);
 
 queryResults = [
   {

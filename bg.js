@@ -606,7 +606,47 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
+// Manifest content scripts only load on navigation, so an Apple Music tab
+// that was already open when the extension installed or updated has no
+// MusicKit reader running until it is refreshed. Inject the timing pair into
+// those existing tabs once so the correct timing works without a manual
+// refresh. The bridge (isolated world) goes first so it is listening before
+// the reader (main world) starts posting. Both scripts guard against running
+// twice, so a tab that already has them is unaffected.
+const APPLE_INJECTION_SCRIPTS = Object.freeze([
+  { file: "apple-bridge.js", world: "ISOLATED" },
+  { file: "apple-inject.js", world: "MAIN" },
+]);
+
+async function injectAppleTimingScripts() {
+  let tabs;
+  try {
+    tabs = await chrome.tabs.query({ url: "https://music.apple.com/*" });
+  } catch {
+    return;
+  }
+
+  for (const tab of tabs) {
+    if (typeof tab.id !== "number") {
+      continue;
+    }
+    for (const { file, world } of APPLE_INJECTION_SCRIPTS) {
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: [file],
+          world,
+        });
+      } catch {
+        // A restricted or navigating tab cannot be scripted now; the manifest
+        // content script will cover it on its next load.
+      }
+    }
+  }
+}
+
 chrome.runtime.onInstalled.addListener(() => {
+  injectAppleTimingScripts();
   reportInBackground();
 });
 

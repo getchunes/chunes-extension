@@ -6,6 +6,13 @@
 // queue counter, so both are wrong. This script reads the MusicKit player and
 // hands snapshots to the isolated-world bridge via window.postMessage.
 (() => {
+  // The service worker may inject this into an already-open tab that also
+  // received it from the manifest; run the reader only once per page.
+  if (window.__chuneIdAppleInject) {
+    return;
+  }
+  window.__chuneIdAppleInject = true;
+
   const CHANNEL = "chune-id-apple";
   const CONFIGURE_POLL_MS = 1000;
   const CONFIGURE_POLL_LIMIT = 300;
