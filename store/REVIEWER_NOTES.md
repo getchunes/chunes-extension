@@ -39,15 +39,27 @@ Reports run after relevant tab changes, setting changes, popup refreshes, and a
 }
 ```
 
+Apple Music tabs may additionally carry `position`, `duration`, `playing`, and
+`sampledAt` fields. These come from two `music.apple.com` content scripts that
+read the page's own MusicKit player so Chunes can show accurate Apple Music
+timing (the Windows media session reports Apple position and duration
+incorrectly). The `scripting` permission is used only to inject that same
+content-script pair into an Apple Music tab that was already open when the
+extension installed or updated, so timing works without a manual refresh. No
+other host receives content scripts, and these fields are bounds-checked and
+accepted only for `music.apple.com`.
+
 Reports contain at most 64 tabs, each title is limited to 512 Unicode
 characters, and the serialized UTF-8 body is at most 32 KiB. The popup shows
 connected only when a successful desktop response includes
-`X-Chunes-Protocol: 2`; a response without that marker is shown as an
+`X-Chunes-Protocol: 3`; a response without that marker is shown as an
 incompatible desktop version.
 
 The master and all service settings default to on and persist only in
-`chrome.storage.local`. Host permissions replace broad `tabs` access. Chune ID
-contains no remote code and directly contacts only local Chunes. For enabled
+`chrome.storage.local`. Host permissions replace broad `tabs` access, and the
+`scripting` permission is limited to injecting the Apple Music timing scripts on
+install or update. Chune ID contains no remote code and directly contacts only
+local Chunes. For enabled
 services, Chunes sends presence to Discord and may search SoundCloud with
 title/artist, send a public video ID to YouTube Music for optional album art,
 or search Apple's public iTunes Search API with title/artist for Apple Music

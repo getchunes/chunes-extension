@@ -108,7 +108,7 @@ if (manifest) {
 
   check(manifest.manifest_version === 3, "manifest_version must be 3");
   check(manifest.name === "Chune ID", "manifest name must remain Chune ID");
-  check(manifest.version === "1.0.5", "manifest version must remain 1.0.5");
+  check(manifest.version === "1.0.6", "manifest version must remain 1.0.6");
   check(
     manifest.minimum_chrome_version === "120",
     "minimum_chrome_version must be 120 for 30-second alarms",
@@ -518,15 +518,15 @@ check(
 );
 
 const dashboardChecklist = readFileSync(join(root, "store/DASHBOARD_CHECKLIST.md"), "utf8");
-const packageSha256 = "d89d2ddc6bc0425070440f340a858e985b124b0d4665428c0338dd417dceed1f";
+const packageSha256 = "626f05457ea650f349dbebafb5981438687d8294eee46eb97acb9d9aee7d80bf";
 check(
   dashboardChecklist.includes("previously submitted Chrome Web Store version 1.0.0") &&
-    dashboardChecklist.includes("chune-id-1.0.5.zip") &&
-    dashboardChecklist.includes("version 1.0.5") &&
-    dashboardChecklist.includes("protocol 2") &&
+    dashboardChecklist.includes("chune-id-1.0.6.zip") &&
+    dashboardChecklist.includes("version 1.0.6") &&
+    dashboardChecklist.includes("protocol 3") &&
     dashboardChecklist.includes("signed or unsigned manual-only") &&
     dashboardChecklist.includes(packageSha256),
-  "dashboard checklist must describe the version 1.0.5 update coordination",
+  "dashboard checklist must describe the version 1.0.6 update coordination",
 );
 
 const submission = readFileSync(join(root, "store/SUBMISSION.md"), "utf8");
@@ -535,7 +535,7 @@ const normalizedSubmission = submission.replace(/\s+/g, " ");
 const normalizedReviewerNotes = reviewerNotes.replace(/\s+/g, " ");
 check(
   normalizedSubmission.includes("Version 1.0.0 has already been submitted") &&
-    normalizedSubmission.includes("separate 1.0.5 real-track-display update") &&
+    normalizedSubmission.includes("separate 1.0.6 Apple Music timing update") &&
     normalizedSubmission.includes(packageSha256) &&
     normalizedSubmission.includes("unsigned manual release") &&
     normalizedReviewerNotes.includes("Unknown publisher") &&

@@ -20,6 +20,17 @@ may publish, not whether local classification occurs. While the master is on,
 matching track data is still sent to local Chunes for suppression when a service
 is disabled. Only the master setting stops tab queries and track reporting.
 
+## `scripting`
+
+Chune ID declares two `music.apple.com` content scripts that read the Apple
+Music web player's own MusicKit state so the companion can show accurate Apple
+Music timing. Manifest content scripts only load on navigation, so a
+`music.apple.com` tab that was already open when the extension installs or
+updates would run no reader until the user refreshed it. The `scripting`
+permission is used solely to inject that same content-script pair into
+already-open `music.apple.com` tabs once, on install or update. It is never
+used to run any other code, on any other site, or at any other time.
+
 ## `http://127.0.0.1/*`
 
 Chune ID POSTs classification reports to the Chunes desktop app at the fixed
@@ -57,12 +68,19 @@ full URL.
 This access lets `chrome.tabs.query` read the URL and title only when a
 currently audible tab is on Apple Music, enabling correct local music
 classification or suppression according to the user's local Apple Music setting.
-Chune ID reports only the hostname and title for Apple Music tabs; no video ID
-or media identifier is extracted. It does not report the full URL.
+It also lets two content scripts on `music.apple.com` read the page's own
+MusicKit player state (playback position, duration, playing state, and
+now-playing title), which Chune ID relays to local Chunes for accurate Apple
+Music timing. Chune ID reports only the hostname, title, and those bounds-checked
+MusicKit timing fields for Apple Music tabs; no video ID or media identifier is
+extracted and the full URL is not reported.
 
 ## Permissions Not Requested
 
-Chune ID does not request `tabs`, `activeTab`, content-script access, cookies,
-identity, browsing history, downloads, or any other Chrome permission. Matching
-host permissions expose URL/title only on the listed sites and replace broad
-`tabs` access.
+Chune ID does not request `tabs`, `activeTab`, cookies, identity, browsing
+history, downloads, or any other Chrome permission beyond `alarms`, `storage`,
+`scripting`, and the listed host permissions. Content scripts run only on
+`music.apple.com`, and `scripting` is used only to inject that same Apple Music
+pair into already-open Apple Music tabs on install or update. Matching host
+permissions expose URL/title only on the listed sites and replace broad `tabs`
+access.
