@@ -82,10 +82,11 @@ if (protocolContract) {
           payloadKeys: ["enabled", "services", "tabs"],
           serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
           tabKeys: ["host", "mediaId", "title"],
+          appleTabPlaybackKeys: ["position", "duration", "playing", "sampledAt"],
         },
         response: {
           markerHeader: "X-Chunes-Protocol",
-          markerValue: "2",
+          markerValue: "3",
         },
       }),
     "scripts/protocol-contract.json must exactly match the reviewed protocol",
@@ -93,7 +94,7 @@ if (protocolContract) {
 }
 
 if (manifest) {
-  const expectedPermissions = ["alarms", "storage"];
+  const expectedPermissions = ["alarms", "scripting", "storage"];
   const expectedHosts = [
     "http://127.0.0.1/*",
     "https://music.apple.com/*",
@@ -107,7 +108,7 @@ if (manifest) {
 
   check(manifest.manifest_version === 3, "manifest_version must be 3");
   check(manifest.name === "Chune ID", "manifest name must remain Chune ID");
-  check(manifest.version === "1.0.5", "manifest version must remain 1.0.5");
+  check(manifest.version === "1.0.6", "manifest version must remain 1.0.6");
   check(
     manifest.minimum_chrome_version === "120",
     "minimum_chrome_version must be 120 for 30-second alarms",
@@ -115,7 +116,7 @@ if (manifest) {
   check(
     JSON.stringify([...(manifest.permissions || [])].sort()) ===
       JSON.stringify(expectedPermissions.sort()),
-    "permissions must contain only alarms and storage",
+    "permissions must contain only alarms, scripting, and storage",
   );
   check(!(manifest.permissions || []).includes("tabs"), "broad tabs permission is forbidden");
   check(
@@ -131,7 +132,24 @@ if (manifest) {
       JSON.stringify(expectedHosts.sort()),
     "host_permissions do not match the reviewed narrow host list",
   );
-  check(!manifest.content_scripts, "content scripts are not part of the reviewed runtime");
+  check(
+    JSON.stringify(manifest.content_scripts) ===
+      JSON.stringify([
+        {
+          matches: ["https://music.apple.com/*"],
+          js: ["apple-inject.js"],
+          run_at: "document_idle",
+          world: "MAIN",
+        },
+        {
+          matches: ["https://music.apple.com/*"],
+          js: ["apple-bridge.js"],
+          run_at: "document_idle",
+          world: "ISOLATED",
+        },
+      ]),
+    "content scripts must be exactly the reviewed Apple Music timing pair",
+  );
   check(
     manifest.background?.service_worker === "bg.js",
     "background service worker must be bg.js",
@@ -159,13 +177,14 @@ if (manifest) {
     manifest.action?.default_popup,
     ...Object.values(manifest.action?.default_icon || {}),
     ...Object.values(manifest.icons || {}),
+    ...(manifest.content_scripts || []).flatMap((script) => script.js || []),
   ].filter(Boolean);
   for (const relativePath of manifestReferences) {
     checkFile(relativePath);
   }
 }
 
-for (const relativePath of ["bg.js", "popup.js"]) {
+for (const relativePath of ["apple-bridge.js", "apple-inject.js", "bg.js", "popup.js"]) {
   const result = spawnSync(process.execPath, ["--check", join(root, relativePath)], {
     encoding: "utf8",
   });
@@ -264,7 +283,7 @@ check(
 );
 check(
   backgroundSource.includes('const RESPONSE_PROTOCOL_HEADER = "X-Chunes-Protocol";') &&
-    backgroundSource.includes('const RESPONSE_PROTOCOL_VERSION = "2";'),
+    backgroundSource.includes('const RESPONSE_PROTOCOL_VERSION = "3";'),
   "background must require the reviewed desktop response marker",
 );
 check(
@@ -292,6 +311,61 @@ check(
   "background reporting must not use the unbounded report-cycle loop",
 );
 check(!/\beval\s*\(|\bnew Function\s*\(/.test(backgroundSource), "remote-code primitives are forbidden");
+check(
+  backgroundSource.includes('const APPLE_PLAYBACK_HOST = "music.apple.com";') &&
+    backgroundSource.includes("applePlaybackByTab.delete(tabId)"),
+  "background must restrict Apple playback to music.apple.com and drop closed tabs",
+);
+check(
+  backgroundSource.includes('chrome.tabs.query({ url: "https://music.apple.com/*" })') &&
+    backgroundSource.includes("chrome.scripting.executeScript"),
+  "install injection must script only already-open music.apple.com tabs",
+);
+for (const [name, appleSource] of [
+  ["apple-inject.js", readFileSync(join(root, "apple-inject.js"), "utf8")],
+  ["apple-bridge.js", readFileSync(join(root, "apple-bridge.js"), "utf8")],
+]) {
+  check(
+    /if \(window\.__chuneIdApple\w+\) \{\s*\n\s*return;/.test(appleSource),
+    `${name} must guard against running twice in one page`,
+  );
+}
+
+const appleInjectSource = readFileSync(join(root, "apple-inject.js"), "utf8");
+const appleBridgeSource = readFileSync(join(root, "apple-bridge.js"), "utf8");
+for (const [name, appleSource] of [
+  ["apple-inject.js", appleInjectSource],
+  ["apple-bridge.js", appleBridgeSource],
+]) {
+  check(
+    !/\beval\s*\(|\bnew Function\s*\(/.test(appleSource),
+    `remote-code primitives are forbidden in ${name}`,
+  );
+  check(
+    !/\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b/.test(appleSource),
+    `network primitives are forbidden in ${name}`,
+  );
+  check(
+    appleSource.includes('const CHANNEL = "chune-id-apple";'),
+    `${name} must use the reviewed relay channel name`,
+  );
+}
+check(
+  appleInjectSource.includes("window.postMessage(snapshot, window.location.origin)"),
+  "the MAIN world script may only post snapshots to its own origin",
+);
+check(
+  !/\bchrome\s*\./.test(appleInjectSource),
+  "the MAIN world script must not touch extension APIs",
+);
+check(
+  appleBridgeSource.includes("event.source !== window || event.origin !== window.location.origin"),
+  "the bridge must reject messages from other windows and origins",
+);
+check(
+  appleBridgeSource.includes('{ type: "apple-playback", payload }'),
+  "the bridge may only relay the reviewed apple-playback message",
+);
 
 const popupSource = readFileSync(join(root, "popup.js"), "utf8");
 check(popupSource.includes('soundcloud: true'), "SoundCloud protocol default must remain true");
@@ -326,6 +400,8 @@ const expectedPackageFiles = [
   "LICENSE",
   "PRIVACY.md",
   "THIRD_PARTY_NOTICES.md",
+  "apple-bridge.js",
+  "apple-inject.js",
   "bg.js",
   "icons/action-16.png",
   "icons/action-32.png",
@@ -442,15 +518,15 @@ check(
 );
 
 const dashboardChecklist = readFileSync(join(root, "store/DASHBOARD_CHECKLIST.md"), "utf8");
-const packageSha256 = "d89d2ddc6bc0425070440f340a858e985b124b0d4665428c0338dd417dceed1f";
+const packageSha256 = "626f05457ea650f349dbebafb5981438687d8294eee46eb97acb9d9aee7d80bf";
 check(
   dashboardChecklist.includes("previously submitted Chrome Web Store version 1.0.0") &&
-    dashboardChecklist.includes("chune-id-1.0.5.zip") &&
-    dashboardChecklist.includes("version 1.0.5") &&
-    dashboardChecklist.includes("protocol 2") &&
+    dashboardChecklist.includes("chune-id-1.0.6.zip") &&
+    dashboardChecklist.includes("version 1.0.6") &&
+    dashboardChecklist.includes("protocol 3") &&
     dashboardChecklist.includes("signed or unsigned manual-only") &&
     dashboardChecklist.includes(packageSha256),
-  "dashboard checklist must describe the version 1.0.5 update coordination",
+  "dashboard checklist must describe the version 1.0.6 update coordination",
 );
 
 const submission = readFileSync(join(root, "store/SUBMISSION.md"), "utf8");
@@ -459,7 +535,7 @@ const normalizedSubmission = submission.replace(/\s+/g, " ");
 const normalizedReviewerNotes = reviewerNotes.replace(/\s+/g, " ");
 check(
   normalizedSubmission.includes("Version 1.0.0 has already been submitted") &&
-    normalizedSubmission.includes("separate 1.0.5 real-track-display update") &&
+    normalizedSubmission.includes("separate 1.0.6 Apple Music timing update") &&
     normalizedSubmission.includes(packageSha256) &&
     normalizedSubmission.includes("unsigned manual release") &&
     normalizedReviewerNotes.includes("Unknown publisher") &&

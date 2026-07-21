@@ -7,10 +7,14 @@ const IDENTIFYING_RETRY_MS = 2000;
 const REQUEST_TIMEOUT_MS = 3000;
 const REQUEST_CONTENT_TYPE = "application/json";
 const RESPONSE_PROTOCOL_HEADER = "X-Chunes-Protocol";
-const RESPONSE_PROTOCOL_VERSION = "2";
+const RESPONSE_PROTOCOL_VERSION = "3";
 const MAX_REPORTED_TABS = 64;
 const MAX_TITLE_CHARACTERS = 512;
 const MAX_REQUEST_BYTES = 32 * 1024;
+const APPLE_PLAYBACK_HOST = "music.apple.com";
+const APPLE_PLAYBACK_KEYS = ["position", "duration", "playing", "sampledAt"];
+const APPLE_SEEK_THRESHOLD_SECONDS = 2.5;
+const MAX_PLAYBACK_SECONDS = 24 * 60 * 60;
 const textEncoder = new TextEncoder();
 const DEFAULT_SETTINGS = Object.freeze({
   enabled: true,
@@ -29,6 +33,7 @@ const SUPPORTED_URL_PATTERNS = Object.freeze([
   "https://music.youtube.com/*",
 ]);
 
+const applePlaybackByTab = new Map();
 let cachedSettings = { ...DEFAULT_SETTINGS };
 let readyPromise;
 let activeReport;
@@ -148,6 +153,7 @@ async function queryClassifiedAudibleTabs() {
           host,
           mediaId,
           source,
+          tabId: typeof tab.id === "number" ? tab.id : null,
           title: typeof tab.title === "string" ? tab.title : "",
         },
       ];
@@ -233,11 +239,23 @@ function buildReport(settings, classifiedTabs) {
 
     const truncatedTitle = truncateTitle(tab.title);
     const reportedTab = { ...tab, title: truncatedTitle.title };
-    payload.tabs.push({
+    const payloadTab = {
       host: reportedTab.host,
       mediaId: reportedTab.mediaId,
       title: reportedTab.title,
-    });
+    };
+    // Only the Apple Music player needs page-level timing; its OS media
+    // session misreports position and duration, so the desktop prefers the
+    // MusicKit sample relayed for this tab.
+    if (reportedTab.source === "Apple Music" && reportedTab.tabId !== null) {
+      const playback = applePlaybackByTab.get(reportedTab.tabId);
+      if (playback) {
+        for (const key of APPLE_PLAYBACK_KEYS) {
+          payloadTab[key] = playback[key];
+        }
+      }
+    }
+    payload.tabs.push(payloadTab);
     const candidateBody = JSON.stringify(payload);
 
     if (textEncoder.encode(candidateBody).byteLength > MAX_REQUEST_BYTES) {
@@ -296,7 +314,7 @@ async function postReport(body) {
       throw new Error(`Chunes returned HTTP ${response.status}.`);
     }
     if (response.headers.get(RESPONSE_PROTOCOL_HEADER) !== RESPONSE_PROTOCOL_VERSION) {
-      const error = new Error("Chunes desktop is incompatible (protocol 2 response required).");
+      const error = new Error("Chunes desktop is incompatible (protocol 3 response required).");
       error.name = "ChunesProtocolError";
       throw error;
     }
@@ -481,7 +499,80 @@ async function updateSettings(patch) {
   return requestReport();
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+function readPlaybackNumber(value, maximum) {
+  return typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= 0 &&
+    value <= maximum
+    ? value
+    : null;
+}
+
+function isAppleSender(sender) {
+  if (!sender || typeof sender.tab?.id !== "number") {
+    return false;
+  }
+
+  try {
+    return new URL(sender.url).hostname.toLowerCase() === APPLE_PLAYBACK_HOST;
+  } catch {
+    return false;
+  }
+}
+
+function applePlaybackChanged(previous, next) {
+  if (!previous) {
+    return true;
+  }
+  if (
+    previous.title !== next.title ||
+    previous.playing !== next.playing ||
+    previous.duration !== next.duration
+  ) {
+    return true;
+  }
+  const elapsedSeconds =
+    previous.playing && next.playing
+      ? Math.max(0, (next.sampledAt - previous.sampledAt) / 1000)
+      : 0;
+  const expectedPosition = previous.position + elapsedSeconds;
+  return Math.abs(next.position - expectedPosition) > APPLE_SEEK_THRESHOLD_SECONDS;
+}
+
+function storeApplePlayback(sender, payload) {
+  if (!isAppleSender(sender) || !payload || typeof payload !== "object") {
+    return;
+  }
+
+  const position = readPlaybackNumber(payload.position, MAX_PLAYBACK_SECONDS);
+  const sampledAt = readPlaybackNumber(payload.sampledAt, Number.MAX_SAFE_INTEGER);
+  if (position === null || sampledAt === null) {
+    return;
+  }
+
+  const playback = {
+    position,
+    duration: readPlaybackNumber(payload.duration, MAX_PLAYBACK_SECONDS),
+    playing: payload.playing === true,
+    title: typeof payload.title === "string" ? truncateTitle(payload.title).title : "",
+    sampledAt,
+  };
+  const previous = applePlaybackByTab.get(sender.tab.id);
+  applePlaybackByTab.set(sender.tab.id, playback);
+  // Steady playback needs no push: the desktop extrapolates from the last
+  // sample. A track change, play/pause flip, populated duration, or seek is
+  // reported immediately instead of waiting out the alarm period.
+  if (applePlaybackChanged(previous, playback)) {
+    reportInBackground();
+  }
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "apple-playback") {
+    storeApplePlayback(sender, message.payload);
+    return false;
+  }
+
   if (message?.type === "refresh") {
     requestReport()
       .then((status) => sendResponse({ ok: true, status }))
@@ -515,7 +606,47 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
+// Manifest content scripts only load on navigation, so an Apple Music tab
+// that was already open when the extension installed or updated has no
+// MusicKit reader running until it is refreshed. Inject the timing pair into
+// those existing tabs once so the correct timing works without a manual
+// refresh. The bridge (isolated world) goes first so it is listening before
+// the reader (main world) starts posting. Both scripts guard against running
+// twice, so a tab that already has them is unaffected.
+const APPLE_INJECTION_SCRIPTS = Object.freeze([
+  { file: "apple-bridge.js", world: "ISOLATED" },
+  { file: "apple-inject.js", world: "MAIN" },
+]);
+
+async function injectAppleTimingScripts() {
+  let tabs;
+  try {
+    tabs = await chrome.tabs.query({ url: "https://music.apple.com/*" });
+  } catch {
+    return;
+  }
+
+  for (const tab of tabs) {
+    if (typeof tab.id !== "number") {
+      continue;
+    }
+    for (const { file, world } of APPLE_INJECTION_SCRIPTS) {
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: [file],
+          world,
+        });
+      } catch {
+        // A restricted or navigating tab cannot be scripted now; the manifest
+        // content script will cover it on its next load.
+      }
+    }
+  }
+}
+
 chrome.runtime.onInstalled.addListener(() => {
+  injectAppleTimingScripts();
   reportInBackground();
 });
 
@@ -529,7 +660,8 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
   }
 });
 
-chrome.tabs.onRemoved.addListener(() => {
+chrome.tabs.onRemoved.addListener((tabId) => {
+  applePlaybackByTab.delete(tabId);
   reportInBackground();
 });
 

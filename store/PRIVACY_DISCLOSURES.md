@@ -9,7 +9,7 @@ presence and suppress regular YouTube audio.
 ## Data Categories
 
 - Web history: **Yes**. Chune ID transiently handles the hostname of a currently audible tab on a declared SoundCloud, YouTube, or Apple Music host and the public video ID of a YouTube Music watch page. It does not read or collect general browsing history or send full URLs.
-- Website content: **Yes**. Chune ID transiently handles the title of a currently audible matching tab; a title can contain a track, artist, or video title.
+- Website content: **Yes**. Chune ID transiently handles the title of a currently audible matching tab; a title can contain a track, artist, or video title. On `music.apple.com` it also reads the page's own MusicKit player state (playback position, duration, playing state, and now-playing title) so the companion can show accurate Apple Music timing.
 - Personally identifiable information: **No**.
 - Health information: **No**.
 - Financial and payment information: **No**.
@@ -27,10 +27,11 @@ presence and suppress regular YouTube audio.
 
 ## Transfer, Storage, and Retention
 
-The extension itself directly sends matching tab hostnames, titles, and a
-validated YouTube Music video ID only to the locally installed Chunes app using
-HTTP loopback at `127.0.0.1:52846`; it does not send them to the developer or
-persist them. For enabled sources, Chunes sends listening presence to Discord.
+The extension itself directly sends matching tab hostnames, titles, a
+validated YouTube Music video ID, and bounds-checked Apple Music MusicKit timing
+fields (playback position, duration, playing state, and sample time) only to the
+locally installed Chunes app using HTTP loopback at `127.0.0.1:52846`; it does
+not send them to the developer or persist them. For enabled sources, Chunes sends listening presence to Discord.
 If optional album-art behavior is enabled, Chunes searches SoundCloud with
 title/artist for SoundCloud tracks, sends the public video ID to YouTube
 Music's web metadata endpoint for exact square music artwork, or searches

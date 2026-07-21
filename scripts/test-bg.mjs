@@ -21,16 +21,19 @@ assert.deepEqual(protocolContract, {
     payloadKeys: ["enabled", "services", "tabs"],
     serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
     tabKeys: ["host", "mediaId", "title"],
+    appleTabPlaybackKeys: ["position", "duration", "playing", "sampledAt"],
   },
   response: {
     markerHeader: "X-Chunes-Protocol",
-    markerValue: "2",
+    markerValue: "3",
   },
 });
 const stored = {};
 const alarmGets = [];
 const alarmsCreated = [];
+const consoleLogs = [];
 const notifications = [];
+const scriptInjections = [];
 const posts = [];
 const queries = [];
 let existingAlarm;
@@ -142,6 +145,11 @@ const chrome = {
       callback?.();
     },
   },
+  scripting: {
+    async executeScript(injection) {
+      scriptInjections.push(normalize(injection));
+    },
+  },
   storage: {
     local: {
       async get(keysOrDefaults) {
@@ -182,7 +190,12 @@ const context = vm.createContext({
   URL,
   chrome,
   clearTimeout,
-  console: { warn() {} },
+  console: {
+    log(...values) {
+      consoleLogs.push(values.map(String).join(" "));
+    },
+    warn() {},
+  },
   fetch: async (url, options) => {
     posts.push({ options: { ...options }, url });
     return fetchHandler(url, options);
@@ -205,6 +218,7 @@ const runtimeProtocolContract = normalize(
         payloadKeys: ["enabled", "services", "tabs"],
         serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
         tabKeys: ["host", "mediaId", "title"],
+        appleTabPlaybackKeys: APPLE_PLAYBACK_KEYS,
       },
       response: {
         markerHeader: RESPONSE_PROTOCOL_HEADER,
@@ -294,7 +308,7 @@ fetchHandler = async () => createResponse({ protocol: null });
 const legacyDesktopRefresh = await sendRuntimeMessage({ type: "refresh" });
 assert.equal(legacyDesktopRefresh.status.connected, false);
 assert.equal(legacyDesktopRefresh.status.incompatible, true);
-assert.match(legacyDesktopRefresh.status.error, /protocol 2 response required/);
+assert.match(legacyDesktopRefresh.status.error, /protocol 3 response required/);
 
 fetchHandler = async () => createResponse({ protocol: "1" });
 const wrongProtocolRefresh = await sendRuntimeMessage({ type: "refresh" });
@@ -916,6 +930,201 @@ assert.equal(
   "Real Song | YouTube Music",
   "a real YouTube Music tab title must still be shown once the page has updated it",
 );
+
+function applePlaybackEntry(tabId) {
+  return normalize(
+    vm.runInContext(`applePlaybackByTab.get(${tabId}) ?? null`, context),
+  );
+}
+
+const appleSender = {
+  tab: { id: 7 },
+  url: "https://music.apple.com/us/album/sample/123",
+};
+const applePayload = {
+  position: 12.5,
+  duration: 207,
+  playing: true,
+  title: "Sample Track",
+  sampledAt: 1750000000000,
+};
+const postsBeforeAppleStore = posts.length;
+assert.equal(
+  events.message.listener(
+    { type: "apple-playback", payload: applePayload },
+    appleSender,
+    () => {},
+  ),
+  false,
+  "apple-playback must not hold the response channel open",
+);
+assert.deepEqual(
+  applePlaybackEntry(7),
+  {
+    position: 12.5,
+    duration: 207,
+    playing: true,
+    title: "Sample Track",
+    sampledAt: 1750000000000,
+  },
+  "a valid Apple playback snapshot must be stored for its tab",
+);
+await waitFor(
+  () => posts.length === postsBeforeAppleStore + 1,
+  "a first playback sample must push a report",
+);
+
+events.message.listener(
+  {
+    type: "apple-playback",
+    payload: { ...applePayload, position: 15.5, sampledAt: 1750000003000 },
+  },
+  appleSender,
+  () => {},
+);
+await delay(30);
+assert.equal(
+  posts.length,
+  postsBeforeAppleStore + 1,
+  "steady playback heartbeats must not push reports",
+);
+
+events.message.listener(
+  {
+    type: "apple-playback",
+    payload: { ...applePayload, position: 100, sampledAt: 1750000006000 },
+  },
+  appleSender,
+  () => {},
+);
+await waitFor(
+  () => posts.length === postsBeforeAppleStore + 2,
+  "a seek must push a report",
+);
+
+events.message.listener(
+  { type: "apple-playback", payload: applePayload },
+  { tab: { id: 8 }, url: "https://soundcloud.com/artist/track" },
+  () => {},
+);
+assert.equal(applePlaybackEntry(8), null, "non-Apple senders must be ignored");
+
+events.message.listener(
+  { type: "apple-playback", payload: { ...applePayload, position: -1 } },
+  { ...appleSender, tab: { id: 9 } },
+  () => {},
+);
+events.message.listener(
+  { type: "apple-playback", payload: { ...applePayload, sampledAt: "now" } },
+  { ...appleSender, tab: { id: 9 } },
+  () => {},
+);
+assert.equal(applePlaybackEntry(9), null, "invalid playback payloads must be ignored");
+
+events.message.listener(
+  {
+    type: "apple-playback",
+    payload: {
+      position: 3,
+      duration: -5,
+      playing: "yes",
+      title: 42,
+      sampledAt: 1750000000001,
+    },
+  },
+  { ...appleSender, tab: { id: 10 } },
+  () => {},
+);
+assert.deepEqual(
+  applePlaybackEntry(10),
+  { position: 3, duration: null, playing: false, title: "", sampledAt: 1750000000001 },
+  "malformed optional playback fields must be normalized, not trusted",
+);
+
+events.removed.listener(10, {});
+assert.equal(
+  applePlaybackEntry(10),
+  null,
+  "closed tabs must drop their stored playback state",
+);
+await delay(20);
+
+queryResults = [
+  { id: 77, title: "Apple Music", url: "https://music.apple.com/us/browse" },
+  { title: "Apple Music", url: "https://music.apple.com/us/album/no-id/1" },
+  { id: 88, title: "Apple Music", url: "https://music.apple.com/us/album/other/2" },
+];
+scriptInjections.length = 0;
+events.installed.listener({ reason: "update" });
+await waitFor(
+  () => scriptInjections.length === 4,
+  "install must inject the timing pair into each open Apple tab that has an id",
+);
+assert.deepEqual(
+  scriptInjections,
+  [
+    { target: { tabId: 77 }, files: ["apple-bridge.js"], world: "ISOLATED" },
+    { target: { tabId: 77 }, files: ["apple-inject.js"], world: "MAIN" },
+    { target: { tabId: 88 }, files: ["apple-bridge.js"], world: "ISOLATED" },
+    { target: { tabId: 88 }, files: ["apple-inject.js"], world: "MAIN" },
+  ],
+  "the bridge must be injected before the reader, and only into id-bearing tabs",
+);
+
+queryResults = [
+  {
+    id: 7,
+    title: "Album - Album by Artist - Apple Music",
+    url: "https://music.apple.com/us/album/album/12345",
+  },
+];
+await sendRuntimeMessage({ type: "refresh" });
+assert.deepEqual(
+  lastPostBody().tabs,
+  [
+    {
+      host: "music.apple.com",
+      mediaId: null,
+      title: "Album - Album by Artist - Apple Music",
+      position: 100,
+      duration: 207,
+      playing: true,
+      sampledAt: 1750000006000,
+    },
+  ],
+  "an audible Apple tab must carry its stored playback sample in the report",
+);
+
+queryResults = [
+  {
+    id: 55,
+    title: "Album - Album by Artist - Apple Music",
+    url: "https://music.apple.com/us/album/album/12345",
+  },
+];
+await sendRuntimeMessage({ type: "refresh" });
+assert.deepEqual(
+  lastPostBody().tabs,
+  [
+    {
+      host: "music.apple.com",
+      mediaId: null,
+      title: "Album - Album by Artist - Apple Music",
+    },
+  ],
+  "an Apple tab without a stored sample must report plain tab keys only",
+);
+
+// Leave the suite on a resolved title: an unidentified Apple tab keeps the
+// 2-second identifying retry armed, which would hold the process open.
+queryResults = [
+  {
+    title: "Real Song | YouTube Music",
+    url: "https://music.youtube.com/watch?v=RealSong123",
+  },
+];
+await sendRuntimeMessage({ type: "refresh" });
+await delay(20);
 
 const alarmCreateCount = alarmsCreated.length;
 const alarmGetCount = alarmGets.length;

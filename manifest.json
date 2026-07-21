@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Chune ID",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "minimum_chrome_version": "120",
   "description": "Identifies supported audible tabs for the Chunes desktop app on this computer.",
-  "permissions": ["alarms", "storage"],
+  "permissions": ["alarms", "scripting", "storage"],
   "host_permissions": [
     "http://127.0.0.1/*",
     "https://soundcloud.com/*",
@@ -18,6 +18,20 @@
   "background": {
     "service_worker": "bg.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["https://music.apple.com/*"],
+      "js": ["apple-inject.js"],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://music.apple.com/*"],
+      "js": ["apple-bridge.js"],
+      "run_at": "document_idle",
+      "world": "ISOLATED"
+    }
+  ],
   "action": {
     "default_title": "Open Chune ID",
     "default_popup": "popup.html",

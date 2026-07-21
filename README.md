@@ -1,5 +1,7 @@
 # Chune ID
 
+[![Chune ID on the Chrome Web Store](https://img.shields.io/chrome-web-store/v/ofbfkbhgfhoapckgjcpmcohbhnogpfjd?label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/chune-id/ofbfkbhgfhoapckgjcpmcohbhnogpfjd) [![Latest release](https://img.shields.io/github/v/release/getchunes/chunes-extension?label=release)](https://github.com/getchunes/chunes-extension/releases/latest)
+
 Companion Chrome extension for [Chunes](https://github.com/getchunes/chunes),
 the Windows app that shows supported music listening as Discord presence.
 
@@ -21,7 +23,7 @@ extension does not guarantee correct attribution in those cases.
 ## Requirements
 
 - Google Chrome 120 or a compatible Chromium browser with Manifest V3 support
-- Windows with [Chunes desktop](https://github.com/getchunes/chunes/releases/latest) running for protocol-2 presence reporting
+- Windows with [Chunes desktop](https://github.com/getchunes/chunes/releases/latest) running for protocol-3 presence reporting (Chunes 1.0.9 or newer)
 
 ## Install
 
@@ -87,7 +89,7 @@ YouTube last. A tab that does not fit is skipped so a later smaller tab can
 still be included; the popup reports omitted-tab and truncated-title counts.
 
 Chune ID shows the companion as connected only when a successful response
-contains `X-Chunes-Protocol: 2`. A response without that marker is treated as
+contains `X-Chunes-Protocol: 3`. A response without that marker is treated as
 an incompatible desktop version.
 
 ## Permissions
