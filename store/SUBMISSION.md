@@ -11,7 +11,7 @@ copy:
 
 ## Reviewed Runtime Contract
 
-- Manifest V3, version 1.0.10, minimum Chrome version 120
+- Manifest V3, version 1.0.11, minimum Chrome version 120
 - Permissions limited to `alarms`, `storage`, `scripting`, loopback, SoundCloud, YouTube, and Apple Music hosts
 - SoundCloud, YouTube Music, and Apple Music each use an isolated-world bridge and MAIN-world reader for current page metadata. Apple Music additionally reads MusicKit timing. The `scripting` permission injects those existing pairs into already-open matching tabs on install or update.
 - `application/json` POSTs to `http://127.0.0.1:52846/tabs`
@@ -39,8 +39,8 @@ title/artist for Apple Music artwork. Use both public policies in the dashboard:
 
 Version 1.0.0 has already been submitted to the Chrome Web Store. Earlier
 immutable GitHub artifacts remain unchanged. This submission is the coordinated
-1.0.10 protocol-4 metadata release and must use `chune-id-1.0.10.zip` with
-SHA-256 `4f5f9dc3e957e747da7637557c5ccd07757b8e32ba66468c4af1c1ecce67812f`.
+1.0.11 protocol-4 metadata release and must use `chune-id-1.0.11.zip` with
+SHA-256 `720251dd155b364f4b303598e7c22014b29efc4716d9f4edec8761eb3915833e`.
 
 The latest Chunes desktop release is the matching protocol-4 companion. Its release-specific
 notice labels the immutable MSI as an unsigned manual release. Chrome reviewers
