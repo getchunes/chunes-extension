@@ -83,10 +83,11 @@ if (protocolContract) {
           serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
           tabKeys: ["host", "mediaId", "title"],
           appleTabPlaybackKeys: ["position", "duration", "playing", "sampledAt"],
+          pageMetadataKeys: ["title", "artist", "artwork"],
         },
         response: {
           markerHeader: "X-Chunes-Protocol",
-          markerValue: "3",
+          markerValue: "4",
         },
       }),
     "scripts/protocol-contract.json must exactly match the reviewed protocol",
@@ -108,7 +109,7 @@ if (manifest) {
 
   check(manifest.manifest_version === 3, "manifest_version must be 3");
   check(manifest.name === "Chune ID", "manifest name must remain Chune ID");
-  check(manifest.version === "1.0.6", "manifest version must remain 1.0.6");
+  check(manifest.version === "1.0.10", "manifest version must remain 1.0.10");
   check(
     manifest.minimum_chrome_version === "120",
     "minimum_chrome_version must be 120 for 30-second alarms",
@@ -147,6 +148,30 @@ if (manifest) {
           run_at: "document_idle",
           world: "ISOLATED",
         },
+        {
+          matches: ["https://soundcloud.com/*", "https://www.soundcloud.com/*"],
+          js: ["soundcloud-bridge.js"],
+          run_at: "document_idle",
+          world: "ISOLATED",
+        },
+        {
+          matches: ["https://soundcloud.com/*", "https://www.soundcloud.com/*"],
+          js: ["soundcloud-inject.js"],
+          run_at: "document_idle",
+          world: "MAIN",
+        },
+        {
+          matches: ["https://music.youtube.com/*"],
+          js: ["youtube-music-bridge.js"],
+          run_at: "document_idle",
+          world: "ISOLATED",
+        },
+        {
+          matches: ["https://music.youtube.com/*"],
+          js: ["youtube-music-inject.js"],
+          run_at: "document_idle",
+          world: "MAIN",
+        },
       ]),
     "content scripts must be exactly the reviewed Apple Music timing pair",
   );
@@ -184,7 +209,16 @@ if (manifest) {
   }
 }
 
-for (const relativePath of ["apple-bridge.js", "apple-inject.js", "bg.js", "popup.js"]) {
+for (const relativePath of [
+  "apple-bridge.js",
+  "apple-inject.js",
+  "bg.js",
+  "popup.js",
+  "soundcloud-bridge.js",
+  "soundcloud-inject.js",
+  "youtube-music-bridge.js",
+  "youtube-music-inject.js",
+]) {
   const result = spawnSync(process.execPath, ["--check", join(root, relativePath)], {
     encoding: "utf8",
   });
@@ -283,7 +317,8 @@ check(
 );
 check(
   backgroundSource.includes('const RESPONSE_PROTOCOL_HEADER = "X-Chunes-Protocol";') &&
-    backgroundSource.includes('const RESPONSE_PROTOCOL_VERSION = "3";'),
+    backgroundSource.includes("const CURRENT_PROTOCOL_VERSION = 4;") &&
+      backgroundSource.includes("const LEGACY_PROTOCOL_VERSION = 3;"),
   "background must require the reviewed desktop response marker",
 );
 check(
@@ -317,9 +352,9 @@ check(
   "background must restrict Apple playback to music.apple.com and drop closed tabs",
 );
 check(
-  backgroundSource.includes('chrome.tabs.query({ url: "https://music.apple.com/*" })') &&
+  backgroundSource.includes("const PAGE_INJECTION_SERVICES") &&
     backgroundSource.includes("chrome.scripting.executeScript"),
-  "install injection must script only already-open music.apple.com tabs",
+  "install injection must script only reviewed already-open provider tabs",
 );
 for (const [name, appleSource] of [
   ["apple-inject.js", readFileSync(join(root, "apple-inject.js"), "utf8")],
@@ -413,6 +448,10 @@ const expectedPackageFiles = [
   "popup.css",
   "popup.html",
   "popup.js",
+  "soundcloud-bridge.js",
+  "soundcloud-inject.js",
+  "youtube-music-bridge.js",
+  "youtube-music-inject.js",
 ];
 
 if (Array.isArray(allowlist)) {
@@ -491,8 +530,8 @@ const privacyPolicy = readFileSync(join(root, "PRIVACY.md"), "utf8");
 const normalizedPrivacyPolicy = privacyPolicy.replace(/\s+/g, " ");
 check(
   normalizedPrivacyPolicy.includes("sends listening presence to Discord") &&
-    normalizedPrivacyPolicy.includes("searches SoundCloud with title and artist") &&
-    normalizedPrivacyPolicy.includes("video ID to YouTube Music's web metadata endpoint") &&
+    normalizedPrivacyPolicy.includes("provider-hosted artwork URL already transferred locally") &&
+    normalizedPrivacyPolicy.includes("Protocol 3 uses temporary legacy") &&
     normalizedPrivacyPolicy.includes("Apple Music") &&
     normalizedPrivacyPolicy.includes("itunes.apple.com/search") &&
     normalizedPrivacyPolicy.includes("getchunes/chunes/blob/main/PRIVACY.md"),

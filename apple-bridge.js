@@ -14,6 +14,7 @@
 
   const CHANNEL = "chune-id-apple";
   const MAX_TITLE_CHARACTERS = 512;
+  const MAX_ARTWORK_URL_CHARACTERS = 2048;
   const MAX_DURATION_SECONDS = 24 * 60 * 60;
 
   function readNumber(value, maximum) {
@@ -23,6 +24,27 @@
       value <= maximum
       ? value
       : null;
+  }
+
+  function readText(value) {
+    return typeof value === "string" && value.length <= MAX_TITLE_CHARACTERS
+      ? value.trim()
+      : "";
+  }
+
+  function readArtwork(value) {
+    if (value === null) {
+      return null;
+    }
+    if (typeof value !== "string" || value.length === 0 || value.length > MAX_ARTWORK_URL_CHARACTERS) {
+      return null;
+    }
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && url.hostname.endsWith(".mzstatic.com") ? url.href : null;
+    } catch {
+      return null;
+    }
   }
 
   window.addEventListener("message", (event) => {
@@ -45,10 +67,9 @@
       position,
       duration: readNumber(data.duration, MAX_DURATION_SECONDS),
       playing: data.playing === true,
-      title:
-        typeof data.title === "string"
-          ? data.title.slice(0, MAX_TITLE_CHARACTERS)
-          : "",
+      title: readText(data.title),
+      artist: readText(data.artist),
+      artwork: readArtwork(data.artwork),
       sampledAt,
     };
 

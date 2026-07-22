@@ -22,10 +22,11 @@ assert.deepEqual(protocolContract, {
     serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
     tabKeys: ["host", "mediaId", "title"],
     appleTabPlaybackKeys: ["position", "duration", "playing", "sampledAt"],
+    pageMetadataKeys: ["title", "artist", "artwork"],
   },
   response: {
     markerHeader: "X-Chunes-Protocol",
-    markerValue: "3",
+    markerValue: "4",
   },
 });
 const stored = {};
@@ -219,10 +220,11 @@ const runtimeProtocolContract = normalize(
         serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
         tabKeys: ["host", "mediaId", "title"],
         appleTabPlaybackKeys: APPLE_PLAYBACK_KEYS,
+        pageMetadataKeys: PAGE_METADATA_KEYS,
       },
       response: {
         markerHeader: RESPONSE_PROTOCOL_HEADER,
-        markerValue: RESPONSE_PROTOCOL_VERSION,
+        markerValue: String(CURRENT_PROTOCOL_VERSION),
       },
     })`,
     context,
@@ -280,10 +282,13 @@ assert.deepEqual(normalize(posts[0].options.headers), {
 assert.equal(posts[0].options.redirect, "error", "loopback fetch must reject redirects");
 assert.equal(
   posts[0].options.body,
-  '{"enabled":true,"services":{"appleMusic":true,"soundcloud":true,"youtubeMusic":true},"tabs":[{"host":"soundcloud.com","mediaId":null,"title":"Artist - SoundCloud track"},{"host":"music.youtube.com","mediaId":"YtMusic1234","title":"Artist - YouTube Music track"},{"host":"www.youtube.com","mediaId":null,"title":"Regular YouTube video"}]}',
+  '{"enabled":true,"services":{"appleMusic":true,"soundcloud":true,"youtubeMusic":true},"tabs":[{"host":"soundcloud.com","mediaId":null,"title":"Artist - SoundCloud track"},{"host":"music.youtube.com","mediaId":"YtMusic1234","title":"Artist - YouTube Music track"},{"host":"www.youtube.com","mediaId":null,"title":"Regular YouTube video"}],"protocol":4}',
   "POST body must use the exact reviewed payload shape and protocol keys",
 );
-assert.deepEqual(Object.keys(lastPostBody()), protocolContract.request.payloadKeys);
+assert.deepEqual(
+  Object.keys(lastPostBody()), [...protocolContract.request.payloadKeys, "protocol"],
+);
+assert.equal(lastPostBody().protocol, 4);
 assert.deepEqual(Object.keys(lastPostBody().services), protocolContract.request.serviceKeys);
 assert.ok(
   lastPostBody().tabs.every(
@@ -308,7 +313,7 @@ fetchHandler = async () => createResponse({ protocol: null });
 const legacyDesktopRefresh = await sendRuntimeMessage({ type: "refresh" });
 assert.equal(legacyDesktopRefresh.status.connected, false);
 assert.equal(legacyDesktopRefresh.status.incompatible, true);
-assert.match(legacyDesktopRefresh.status.error, /protocol 3 response required/);
+assert.match(legacyDesktopRefresh.status.error, /protocol 4 response required/);
 
 fetchHandler = async () => createResponse({ protocol: "1" });
 const wrongProtocolRefresh = await sendRuntimeMessage({ type: "refresh" });
@@ -351,6 +356,7 @@ assert.deepEqual(lastPostBody(), {
   enabled: false,
   services: { appleMusic: false, soundcloud: false, youtubeMusic: true },
   tabs: [],
+  protocol: 4,
 });
 
 await sendRuntimeMessage({ type: "refresh" });
@@ -964,7 +970,7 @@ assert.deepEqual(
     position: 12.5,
     duration: 207,
     playing: true,
-    title: "Sample Track",
+    metadata: null,
     sampledAt: 1750000000000,
   },
   "a valid Apple playback snapshot must be stored for its tab",
@@ -1037,7 +1043,7 @@ events.message.listener(
 );
 assert.deepEqual(
   applePlaybackEntry(10),
-  { position: 3, duration: null, playing: false, title: "", sampledAt: 1750000000001 },
+  { position: 3, duration: null, playing: false, metadata: null, sampledAt: 1750000000001 },
   "malformed optional playback fields must be normalized, not trusted",
 );
 
@@ -1114,6 +1120,89 @@ assert.deepEqual(
   ],
   "an Apple tab without a stored sample must report plain tab keys only",
 );
+
+queryResults = [
+  {
+    id: 66,
+    title: "SoundCloud",
+    url: "https://soundcloud.com/artist/current-track",
+  },
+];
+const soundcloudMetadataSender = {
+  tab: { id: 66 },
+  url: "https://soundcloud.com/artist/current-track",
+};
+events.message.listener(
+  {
+    type: "page-metadata",
+    payload: {
+      title: "Current SoundCloud Track",
+      artist: "Current Artist",
+      artwork: "https://i1.sndcdn.com/artwork-large.jpg",
+    },
+  },
+  soundcloudMetadataSender,
+  () => {},
+);
+await delay(20);
+await sendRuntimeMessage({ type: "refresh" });
+assert.deepEqual(lastPostBody().tabs, [
+  {
+    host: "soundcloud.com",
+    mediaId: null,
+    title: "SoundCloud",
+    metadata: {
+      title: "Current SoundCloud Track",
+      artist: "Current Artist",
+      artwork: "https://i1.sndcdn.com/artwork-large.jpg",
+    },
+  },
+]);
+events.message.listener(
+  {
+    type: "page-metadata",
+    payload: {
+      title: "Ignored",
+      artist: "Artist",
+      artwork: null,
+    },
+  },
+  { tab: { id: 67 }, url: "https://music.apple.com/us/browse" },
+  () => {},
+);
+assert.equal(
+  normalize(vm.runInContext("pageMetadataByTab.get(67) ?? null", context)),
+  null,
+  "page metadata must be rejected from unsupported senders",
+);
+
+const compatibilityPosts = [];
+fetchHandler = async (_url, options) => {
+  const body = JSON.parse(options.body);
+  compatibilityPosts.push(body);
+  return body.protocol === 4
+    ? createResponse({ status: 400 })
+    : createResponse({ protocol: "3" });
+};
+const legacyFallbackRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(legacyFallbackRefresh.status.connected, true);
+assert.deepEqual(
+  compatibilityPosts.map((body) => body.protocol ?? 3),
+  [4, 3],
+  "a v4 rejection must retry once with the exact v3 report shape",
+);
+assert.ok(
+  !Object.hasOwn(compatibilityPosts[1], "protocol") &&
+    compatibilityPosts[1].tabs.every(
+      (tab) => !Object.hasOwn(tab, "metadata"),
+    ),
+  "the v3 retry must not leak v4-only fields",
+);
+assert.ok(
+  consoleLogs.some((entry) => entry.includes("protocol v3 (legacy fallback)")),
+  "protocol fallback must be visible in the service-worker console",
+);
+fetchHandler = async () => createResponse();
 
 // Leave the suite on a resolved title: an unidentified Apple tab keeps the
 // 2-second identifying retry armed, which would hold the process open.

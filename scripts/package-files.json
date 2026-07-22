@@ -14,5 +14,9 @@
   "manifest.json",
   "popup.css",
   "popup.html",
-  "popup.js"
+  "popup.js",
+  "soundcloud-bridge.js",
+  "soundcloud-inject.js",
+  "youtube-music-bridge.js",
+  "youtube-music-inject.js"
 ]
