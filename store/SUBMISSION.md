@@ -11,15 +11,15 @@ copy:
 
 ## Reviewed Runtime Contract
 
-- Manifest V3, version 1.0.6, minimum Chrome version 120
+- Manifest V3, version 1.0.10, minimum Chrome version 120
 - Permissions limited to `alarms`, `storage`, `scripting`, loopback, SoundCloud, YouTube, and Apple Music hosts
-- Two `music.apple.com` content scripts read the page's own MusicKit player state (playback position, duration, playing state, and now-playing title); the `scripting` permission injects the same pair into an already-open Apple Music tab on install or update
+- SoundCloud, YouTube Music, and Apple Music each use an isolated-world bridge and MAIN-world reader for current page metadata. Apple Music additionally reads MusicKit timing. The `scripting` permission injects those existing pairs into already-open matching tabs on install or update.
 - `application/json` POSTs to `http://127.0.0.1:52846/tabs`
-- Exact top-level payload keys: `enabled`, `services`, and `tabs`
+- Protocol 4 adds explicit top-level `protocol: 4`; an older protocol-3 desktop receives one exact fallback report without page metadata
 - At most 64 tabs, 512 Unicode characters per title, and 32 KiB per UTF-8 body
-- Exact tab payload keys: `host`, `mediaId`, and `title`; `mediaId` is a validated YouTube Music video ID or `null`; `mediaId` is always `null` for Apple Music
+- Tab payloads contain `host`, `mediaId`, and `title`. Protocol 4 can additionally carry validated current page `metadata` with title, artist, and provider-hosted artwork. `mediaId` is a validated YouTube Music video ID or `null`; it is always `null` for Apple Music.
 - Apple Music tabs may additionally carry `position`, `duration`, `playing`, and `sampledAt` MusicKit timing fields, each bounds-checked; no other host may send them
-- Connection accepted only with response header `X-Chunes-Protocol: 3`
+- Connection accepts `X-Chunes-Protocol: 4`, with an isolated protocol-3 compatibility fallback for older desktop releases
 - Service switches control publishing while local track classification continues for suppression
 - Master off skips tab queries and sends an empty paused heartbeat
 
@@ -37,12 +37,11 @@ title/artist for Apple Music artwork. Use both public policies in the dashboard:
 
 ## Release Coordination
 
-Version 1.0.0 has already been submitted to the Chrome Web Store. The immutable
-1.0.0, 1.0.1, 1.0.2, 1.0.3, and 1.0.4 GitHub artifacts remain unchanged. This
-submission is the separate 1.0.6 Apple Music timing update and must use a
-newly built `chune-id-1.0.6.zip` with SHA-256
-`626f05457ea650f349dbebafb5981438687d8294eee46eb97acb9d9aee7d80bf`.
+Version 1.0.0 has already been submitted to the Chrome Web Store. Earlier
+immutable GitHub artifacts remain unchanged. This submission is the coordinated
+1.0.10 protocol-4 metadata release and must use `chune-id-1.0.10.zip` with
+SHA-256 `4f5f9dc3e957e747da7637557c5ccd07757b8e32ba66468c4af1c1ecce67812f`.
 
-The latest Chunes desktop release is the matching protocol-3 companion. Its release-specific
+The latest Chunes desktop release is the matching protocol-4 companion. Its release-specific
 notice labels the immutable MSI as an unsigned manual release. Chrome reviewers
 should expect **Unknown publisher** for that explicitly labeled companion build.
