@@ -22,14 +22,13 @@ is disabled. Only the master setting stops tab queries and track reporting.
 
 ## `scripting`
 
-Chune ID declares two `music.apple.com` content scripts that read the Apple
-Music web player's own MusicKit state so the companion can show accurate Apple
-Music timing. Manifest content scripts only load on navigation, so a
-`music.apple.com` tab that was already open when the extension installs or
-updates would run no reader until the user refreshed it. The `scripting`
-permission is used solely to inject that same content-script pair into
-already-open `music.apple.com` tabs once, on install or update. It is never
-used to run any other code, on any other site, or at any other time.
+Chune ID declares isolated-world bridge and MAIN-world reader scripts on
+SoundCloud, YouTube Music, and Apple Music. They read current page Media Session
+metadata; the Apple Music reader also reads MusicKit timing. Manifest content
+scripts only load on navigation, so an already-open matching tab would run no
+reader until refreshed. The `scripting` permission injects that same reviewed
+pair into already-open matching tabs once, on install or update. It is never
+used on other sites or at any other time.
 
 ## `http://127.0.0.1/*`
 
@@ -43,10 +42,11 @@ and optional SoundCloud, YouTube Music, or Apple Music album-art requests.
 
 ## `https://soundcloud.com/*` and `https://www.soundcloud.com/*`
 
-This access lets `chrome.tabs.query` read the URL and title only when a
-currently audible tab is on SoundCloud. Chune ID reduces the URL to its
-hostname before the local report so Chunes can identify or suppress that
-service according to the user's local SoundCloud setting.
+This access lets `chrome.tabs.query` identify audible SoundCloud tabs. The
+reviewed page scripts read current Media Session title, artist, and a
+provider-hosted artwork URL. Chune ID reduces the tab URL to its hostname before
+the local report so Chunes can identify or suppress that service according to
+the user's local SoundCloud setting.
 
 ## `https://youtube.com/*`, `https://www.youtube.com/*`, and `https://m.youtube.com/*`
 
@@ -56,12 +56,10 @@ blocked regardless of the YouTube Music setting.
 
 ## `https://music.youtube.com/*`
 
-This access lets `chrome.tabs.query` read the URL and title only when a
-currently audible tab is on YouTube Music, enabling correct local music
-classification or suppression according to the user's local YouTube Music
-setting. Chune ID also derives and validates the watch page's public video ID so
-local Chunes can request exact YouTube Music album art. It does not report the
-full URL.
+This access lets `chrome.tabs.query` identify audible YouTube Music tabs. The
+reviewed page scripts read current Media Session title, artist, and a
+provider-hosted artwork URL. Chune ID also derives and validates the watch
+page's public video ID. It does not report the full URL.
 
 ## `https://music.apple.com/*`
 
@@ -70,17 +68,16 @@ currently audible tab is on Apple Music, enabling correct local music
 classification or suppression according to the user's local Apple Music setting.
 It also lets two content scripts on `music.apple.com` read the page's own
 MusicKit player state (playback position, duration, playing state, and
-now-playing title), which Chune ID relays to local Chunes for accurate Apple
-Music timing. Chune ID reports only the hostname, title, and those bounds-checked
-MusicKit timing fields for Apple Music tabs; no video ID or media identifier is
-extracted and the full URL is not reported.
+now-playing metadata), which Chune ID relays to local Chunes for accurate Apple
+Music timing. Chune ID reports only the hostname, validated metadata, and those
+bounds-checked MusicKit timing fields for Apple Music tabs; no video ID or media
+identifier is extracted and the full URL is not reported.
 
 ## Permissions Not Requested
 
 Chune ID does not request `tabs`, `activeTab`, cookies, identity, browsing
 history, downloads, or any other Chrome permission beyond `alarms`, `storage`,
-`scripting`, and the listed host permissions. Content scripts run only on
-`music.apple.com`, and `scripting` is used only to inject that same Apple Music
-pair into already-open Apple Music tabs on install or update. Matching host
-permissions expose URL/title only on the listed sites and replace broad `tabs`
-access.
+`scripting`, and the listed host permissions. Content scripts run only on the
+three supported music hosts, and `scripting` injects those same reviewed pairs
+only into already-open matching tabs on install or update. Matching host
+permissions replace broad `tabs` access.

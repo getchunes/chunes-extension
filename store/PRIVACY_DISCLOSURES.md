@@ -9,7 +9,7 @@ presence and suppress regular YouTube audio.
 ## Data Categories
 
 - Web history: **Yes**. Chune ID transiently handles the hostname of a currently audible tab on a declared SoundCloud, YouTube, or Apple Music host and the public video ID of a YouTube Music watch page. It does not read or collect general browsing history or send full URLs.
-- Website content: **Yes**. Chune ID transiently handles the title of a currently audible matching tab; a title can contain a track, artist, or video title. On `music.apple.com` it also reads the page's own MusicKit player state (playback position, duration, playing state, and now-playing title) so the companion can show accurate Apple Music timing.
+- Website content: **Yes**. Chune ID transiently handles the title of a currently audible matching tab; a title can contain a track, artist, or video title. On SoundCloud, YouTube Music, and Apple Music it reads current page Media Session title, artist, and provider-hosted artwork when available. On `music.apple.com` it also reads MusicKit playback position, duration, and playing state so the companion can show accurate Apple Music timing.
 - Personally identifiable information: **No**.
 - Health information: **No**.
 - Financial and payment information: **No**.
@@ -27,17 +27,16 @@ presence and suppress regular YouTube audio.
 
 ## Transfer, Storage, and Retention
 
-The extension itself directly sends matching tab hostnames, titles, a
-validated YouTube Music video ID, and bounds-checked Apple Music MusicKit timing
-fields (playback position, duration, playing state, and sample time) only to the
-locally installed Chunes app using HTTP loopback at `127.0.0.1:52846`; it does
-not send them to the developer or persist them. For enabled sources, Chunes sends listening presence to Discord.
-If optional album-art behavior is enabled, Chunes searches SoundCloud with
-title/artist for SoundCloud tracks, sends the public video ID to YouTube
-Music's web metadata endpoint for exact square music artwork, or searches
-Apple's public iTunes Search API with title/artist for Apple Music artwork.
-Those downstream requests are made by Chunes and are covered by the companion
-privacy policy. Four boolean extension settings persist only in
+The extension itself directly sends matching tab hostnames, titles, current page
+metadata, a validated YouTube Music video ID, and bounds-checked Apple Music
+MusicKit timing fields (playback position, duration, playing state, and sample
+time) only to the locally installed Chunes app using HTTP loopback at
+`127.0.0.1:52846`; it does not send them to the developer or persist them. For
+enabled sources, Chunes sends listening presence to Discord. Protocol 4 uses the
+provider-hosted artwork already transferred locally. Protocol 3 retains temporary
+documented provider artwork fallbacks while the Store update rolls out. Those
+downstream requests are made by Chunes and are covered by the companion privacy
+policy. Four boolean extension settings persist only in
 `chrome.storage.local` until changed, browser storage is cleared, or the
 extension is removed.
 

@@ -15,10 +15,11 @@ shows supported listening as Discord presence.
 
 Windows can tell Chunes that a browser is playing audio, but not which site is
 responsible. Chune ID closes that local information gap. It identifies audible
-SoundCloud, YouTube Music, Apple Music, and regular YouTube tabs and sends only
-their hostname and tab title to the Chunes app running on your computer. For
-YouTube Music, it also sends the public video ID so Chunes can request exact
-album art.
+SoundCloud, YouTube Music, Apple Music, and regular YouTube tabs and sends their
+hostname and tab title to the Chunes app running on your computer. For supported
+music tabs, protocol 4 can also send the current page's title, artist, and
+provider-hosted artwork URL. For YouTube Music, it also sends the public video
+ID.
 It never sends a full tab URL.
 
 With Chune ID, Chunes can:
@@ -41,10 +42,9 @@ master switch is the only way to stop tab queries and track reporting.
 
 Chune ID has no analytics, ads, accounts, or remote code. The extension itself
 directly contacts only Chunes at 127.0.0.1:52846. For enabled services, Chunes
-sends presence to Discord and may, under optional companion artwork controls,
-search SoundCloud with title/artist, request exact album art from YouTube Music
-using its public video ID, or search Apple's public iTunes Search API with
-title/artist for Apple Music artwork. See both privacy policies below.
+sends presence to Discord and uses provider-hosted artwork supplied locally by
+protocol 4. During the temporary protocol-3 compatibility window, Chunes may
+use its documented provider artwork fallbacks. See both privacy policies below.
 
 Requires the Chunes Windows companion app. Chunes is available from:
 https://github.com/getchunes/chunes/releases/latest
