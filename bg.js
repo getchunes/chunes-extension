@@ -7,14 +7,18 @@ const IDENTIFYING_RETRY_MS = 2000;
 const REQUEST_TIMEOUT_MS = 3000;
 const REQUEST_CONTENT_TYPE = "application/json";
 const RESPONSE_PROTOCOL_HEADER = "X-Chunes-Protocol";
-const RESPONSE_PROTOCOL_VERSION = "3";
+const CURRENT_PROTOCOL_VERSION = 4;
+const LEGACY_PROTOCOL_VERSION = 3;
 const MAX_REPORTED_TABS = 64;
 const MAX_TITLE_CHARACTERS = 512;
 const MAX_REQUEST_BYTES = 32 * 1024;
 const APPLE_PLAYBACK_HOST = "music.apple.com";
 const APPLE_PLAYBACK_KEYS = ["position", "duration", "playing", "sampledAt"];
+const PAGE_METADATA_KEYS = ["title", "artist", "artwork"];
 const APPLE_SEEK_THRESHOLD_SECONDS = 2.5;
 const MAX_PLAYBACK_SECONDS = 24 * 60 * 60;
+const MAX_ARTWORK_URL_CHARACTERS = 2048;
+const PAGE_METADATA_MAX_AGE_MS = 10_000;
 const textEncoder = new TextEncoder();
 const DEFAULT_SETTINGS = Object.freeze({
   enabled: true,
@@ -34,12 +38,14 @@ const SUPPORTED_URL_PATTERNS = Object.freeze([
 ]);
 
 const applePlaybackByTab = new Map();
+const pageMetadataByTab = new Map();
 let cachedSettings = { ...DEFAULT_SETTINGS };
 let readyPromise;
 let activeReport;
 let queuedInteractiveReport;
 let backgroundReportPending = false;
 let identifyingRetryTimer;
+let lastNegotiatedProtocolVersion = null;
 let lastStatus = {
   connected: null,
   current: null,
@@ -48,6 +54,7 @@ let lastStatus = {
   lastAttemptAt: null,
   lastSuccessAt: null,
   omittedTabCount: 0,
+  protocolVersion: null,
   settings: { ...DEFAULT_SETTINGS },
   tabCount: 0,
   truncatedTitleCount: 0,
@@ -215,7 +222,7 @@ function reportPriority(tab, settings) {
   return tab.source === "YouTube (blocked)" ? 2 : 1;
 }
 
-function buildReport(settings, classifiedTabs) {
+function buildReport(settings, classifiedTabs, protocolVersion = CURRENT_PROTOCOL_VERSION) {
   const payload = {
     enabled: settings.enabled,
     services: {
@@ -225,6 +232,9 @@ function buildReport(settings, classifiedTabs) {
     },
     tabs: [],
   };
+  if (protocolVersion === CURRENT_PROTOCOL_VERSION) {
+    payload.protocol = CURRENT_PROTOCOL_VERSION;
+  }
   const prioritizedTabs = [...classifiedTabs].sort(
     (left, right) => reportPriority(left, settings) - reportPriority(right, settings),
   );
@@ -244,9 +254,12 @@ function buildReport(settings, classifiedTabs) {
       mediaId: reportedTab.mediaId,
       title: reportedTab.title,
     };
-    // Only the Apple Music player needs page-level timing; its OS media
-    // session misreports position and duration, so the desktop prefers the
-    // MusicKit sample relayed for this tab.
+    const metadata = protocolVersion === CURRENT_PROTOCOL_VERSION && freshPageMetadata(reportedTab);
+    if (metadata) {
+      payloadTab.metadata = metadata;
+    }
+    // Apple uses MusicKit while SoundCloud and YTM use their page audio
+    // element. The desktop prefers a fresh page sample over GSMTC timing.
     if (reportedTab.source === "Apple Music" && reportedTab.tabId !== null) {
       const playback = applePlaybackByTab.get(reportedTab.tabId);
       if (playback) {
@@ -295,7 +308,7 @@ function displayTitle(tab, desktop) {
   return tab.title;
 }
 
-async function postReport(body) {
+async function postReport(body, protocolVersion) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -313,8 +326,8 @@ async function postReport(body) {
     if (!response.ok) {
       throw new Error(`Chunes returned HTTP ${response.status}.`);
     }
-    if (response.headers.get(RESPONSE_PROTOCOL_HEADER) !== RESPONSE_PROTOCOL_VERSION) {
-      const error = new Error("Chunes desktop is incompatible (protocol 3 response required).");
+    if (response.headers.get(RESPONSE_PROTOCOL_HEADER) !== String(protocolVersion)) {
+      const error = new Error(`Chunes desktop is incompatible (protocol ${protocolVersion} response required).`);
       error.name = "ChunesProtocolError";
       throw error;
     }
@@ -322,12 +335,13 @@ async function postReport(body) {
       const data = await response.json();
       if (data && typeof data.track === "string" && data.track.trim()) {
         return {
+          protocolVersion,
           track: data.track.trim(),
           host: typeof data.host === "string" ? data.host : null,
         };
       }
     } catch {}
-    return null;
+    return { protocolVersion, track: null, host: null };
   } finally {
     clearTimeout(timeout);
   }
@@ -348,10 +362,11 @@ async function performReport() {
     }
   }
 
-  const { body, omittedTabCount, reportedTabs, truncatedTitleCount } = buildReport(
+  const report = buildReport(
     settings,
     classifiedTabs,
   );
+  const { body, omittedTabCount, reportedTabs, truncatedTitleCount } = report;
   const supportedTabs = reportedTabs.filter(
     ({ source }) => source !== "YouTube (blocked)",
   );
@@ -361,23 +376,50 @@ async function performReport() {
   let connected = false;
   let connectionError = null;
   let incompatible = false;
+  let protocolVersion = null;
 
   let desktop = null;
   try {
-    desktop = await postReport(body);
+    desktop = await postReport(body, CURRENT_PROTOCOL_VERSION);
+    protocolVersion = desktop.protocolVersion;
     connected = true;
   } catch (error) {
-    if (error instanceof Error && error.name === "ChunesProtocolError") {
-      incompatible = true;
-      connectionError = error.message;
-    } else {
-      connectionError =
-        error instanceof Error && error.name === "AbortError"
-          ? "Chunes desktop did not respond in time."
-          : error instanceof Error && error.message.startsWith("Chunes returned HTTP")
-            ? error.message
-            : "Chunes desktop is not responding.";
+    // A protocol 3 desktop rejects the explicit v4 marker. Retry only that
+    // validation failure with the exact legacy body, without page metadata.
+    if (error instanceof Error && error.message === "Chunes returned HTTP 400.") {
+      try {
+        desktop = await postReport(
+          buildReport(settings, classifiedTabs, LEGACY_PROTOCOL_VERSION).body,
+          LEGACY_PROTOCOL_VERSION,
+        );
+        protocolVersion = desktop.protocolVersion;
+        connected = true;
+      } catch (legacyError) {
+        error = legacyError;
+      }
     }
+    if (!connected) {
+      if (error instanceof Error && error.name === "ChunesProtocolError") {
+        incompatible = true;
+        connectionError = error.message;
+      } else {
+        connectionError =
+          error instanceof Error && error.name === "AbortError"
+            ? "Chunes desktop did not respond in time."
+            : error instanceof Error && error.message.startsWith("Chunes returned HTTP")
+              ? error.message
+              : "Chunes desktop is not responding.";
+      }
+    }
+  }
+
+  if (connected && protocolVersion !== lastNegotiatedProtocolVersion) {
+    lastNegotiatedProtocolVersion = protocolVersion;
+    console.log(
+      `Chune ID connected using protocol v${protocolVersion}${
+        protocolVersion === LEGACY_PROTOCOL_VERSION ? " (legacy fallback)" : ""
+      }.`,
+    );
   }
 
   lastStatus = {
@@ -508,6 +550,73 @@ function readPlaybackNumber(value, maximum) {
     : null;
 }
 
+function readMetadataText(value, required = false) {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const text = truncateTitle(value).title.trim();
+  return required && !text ? null : text;
+}
+
+function allowedArtworkHost(source, hostname) {
+  if (source === "Apple Music") return hostname.endsWith(".mzstatic.com");
+  if (source === "SoundCloud") return hostname.endsWith(".sndcdn.com");
+  return source === "YouTube Music" && new Set([
+    "i.ytimg.com",
+    "lh3.googleusercontent.com",
+    "yt3.ggpht.com",
+    "yt3.googleusercontent.com",
+  ]).has(hostname);
+}
+
+function readMetadataArtwork(value, source) {
+  if (value === null) {
+    return { protocolVersion, track: null, host: null };
+  }
+  if (typeof value !== "string" || value.length === 0 || value.length > MAX_ARTWORK_URL_CHARACTERS) {
+    return null;
+  }
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password && allowedArtworkHost(source, url.hostname)
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function readPageMetadata(payload, source) {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+  const title = readMetadataText(payload.title, true);
+  const artist = readMetadataText(payload.artist);
+  if (title === null || artist === null) {
+    return null;
+  }
+  const metadata = {
+    title,
+    artist,
+    artwork: readMetadataArtwork(payload.artwork, source),
+    receivedAt: Date.now(),
+  };
+  return metadata;
+}
+
+function freshPageMetadata(tab) {
+  if (tab.tabId === null) {
+    return null;
+  }
+  const cached = tab.source === "Apple Music"
+    ? applePlaybackByTab.get(tab.tabId)?.metadata
+    : pageMetadataByTab.get(tab.tabId);
+  if (!cached || Date.now() - cached.receivedAt > PAGE_METADATA_MAX_AGE_MS) {
+    return null;
+  }
+  return Object.fromEntries(PAGE_METADATA_KEYS.map((key) => [key, cached[key]]));
+}
+
 function isAppleSender(sender) {
   if (!sender || typeof sender.tab?.id !== "number") {
     return false;
@@ -527,7 +636,8 @@ function applePlaybackChanged(previous, next) {
   if (
     previous.title !== next.title ||
     previous.playing !== next.playing ||
-    previous.duration !== next.duration
+    previous.duration !== next.duration ||
+    JSON.stringify(previous.metadata) !== JSON.stringify(next.metadata)
   ) {
     return true;
   }
@@ -554,7 +664,7 @@ function storeApplePlayback(sender, payload) {
     position,
     duration: readPlaybackNumber(payload.duration, MAX_PLAYBACK_SECONDS),
     playing: payload.playing === true,
-    title: typeof payload.title === "string" ? truncateTitle(payload.title).title : "",
+    metadata: readPageMetadata(payload, "Apple Music"),
     sampledAt,
   };
   const previous = applePlaybackByTab.get(sender.tab.id);
@@ -567,9 +677,41 @@ function storeApplePlayback(sender, payload) {
   }
 }
 
+function storePageMetadata(sender, payload) {
+  if (!sender || typeof sender.tab?.id !== "number") {
+    return;
+  }
+  let source;
+  try {
+    source = classifyHost(new URL(sender.url).hostname.toLowerCase());
+  } catch {
+    return;
+  }
+  if (source !== "SoundCloud" && source !== "YouTube Music") {
+    return;
+  }
+  const metadata = readPageMetadata(payload, source);
+  if (!metadata) {
+    return;
+  }
+  const previous = pageMetadataByTab.get(sender.tab.id);
+  pageMetadataByTab.set(sender.tab.id, metadata);
+  if (
+    !previous ||
+    PAGE_METADATA_KEYS.some((key) => previous[key] !== metadata[key])
+  ) {
+    reportInBackground();
+  }
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "apple-playback") {
     storeApplePlayback(sender, message.payload);
+    return false;
+  }
+
+  if (message?.type === "page-metadata") {
+    storePageMetadata(sender, message.payload);
     return false;
   }
 
@@ -613,24 +755,62 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 // refresh. The bridge (isolated world) goes first so it is listening before
 // the reader (main world) starts posting. Both scripts guard against running
 // twice, so a tab that already has them is unaffected.
-const APPLE_INJECTION_SCRIPTS = Object.freeze([
-  { file: "apple-bridge.js", world: "ISOLATED" },
-  { file: "apple-inject.js", world: "MAIN" },
+const PAGE_INJECTION_SERVICES = Object.freeze([
+  {
+    host: "music.apple.com",
+    pattern: "https://music.apple.com/*",
+    scripts: [
+      { file: "apple-bridge.js", world: "ISOLATED" },
+      { file: "apple-inject.js", world: "MAIN" },
+    ],
+  },
+  {
+    host: "soundcloud.com",
+    pattern: "https://soundcloud.com/*",
+    scripts: [
+      { file: "soundcloud-bridge.js", world: "ISOLATED" },
+      { file: "soundcloud-inject.js", world: "MAIN" },
+    ],
+  },
+  {
+    host: "www.soundcloud.com",
+    pattern: "https://www.soundcloud.com/*",
+    scripts: [
+      { file: "soundcloud-bridge.js", world: "ISOLATED" },
+      { file: "soundcloud-inject.js", world: "MAIN" },
+    ],
+  },
+  {
+    host: "music.youtube.com",
+    pattern: "https://music.youtube.com/*",
+    scripts: [
+      { file: "youtube-music-bridge.js", world: "ISOLATED" },
+      { file: "youtube-music-inject.js", world: "MAIN" },
+    ],
+  },
 ]);
 
-async function injectAppleTimingScripts() {
+async function injectPageMetadataScripts() {
+  for (const service of PAGE_INJECTION_SERVICES) {
   let tabs;
   try {
-    tabs = await chrome.tabs.query({ url: "https://music.apple.com/*" });
+    tabs = await chrome.tabs.query({ url: service.pattern });
   } catch {
-    return;
+    continue;
   }
 
   for (const tab of tabs) {
     if (typeof tab.id !== "number") {
       continue;
     }
-    for (const { file, world } of APPLE_INJECTION_SCRIPTS) {
+    try {
+      if (new URL(tab.url).hostname.toLowerCase() !== service.host) {
+        continue;
+      }
+    } catch {
+      continue;
+    }
+    for (const { file, world } of service.scripts) {
       try {
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
@@ -643,10 +823,11 @@ async function injectAppleTimingScripts() {
       }
     }
   }
+  }
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  injectAppleTimingScripts();
+  injectPageMetadataScripts();
   reportInBackground();
 });
 
@@ -654,7 +835,11 @@ chrome.runtime.onStartup.addListener(() => {
   reportInBackground();
 });
 
-chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if ("url" in changeInfo) {
+    applePlaybackByTab.delete(tabId);
+    pageMetadataByTab.delete(tabId);
+  }
   if ("audible" in changeInfo || "title" in changeInfo || "url" in changeInfo) {
     reportInBackground();
   }
@@ -662,10 +847,13 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   applePlaybackByTab.delete(tabId);
+  pageMetadataByTab.delete(tabId);
   reportInBackground();
 });
 
-chrome.tabs.onReplaced.addListener(() => {
+chrome.tabs.onReplaced.addListener((_addedTabId, removedTabId) => {
+  applePlaybackByTab.delete(removedTabId);
+  pageMetadataByTab.delete(removedTabId);
   reportInBackground();
 });
 

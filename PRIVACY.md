@@ -16,13 +16,13 @@ tabs, it reads:
 - the tab title, which can contain website content such as a track, artist, or video title.
 
 For each matching tab, the extension sends its hostname and title alongside the
-master and three service booleans. For a YouTube Music watch page, it also sends
-the page's 11-character public video ID so Chunes can request the matching album
-art. For an Apple Music tab, the report carries the hostname and title only;
-mediaId is always null for Apple Music. It does not send a full URL or general
-browsing history. The Chrome Web Store classifies this limited handling under
-the **web history** and **website content** data categories because hostnames,
-tab titles, and media identifiers are involved.
+master and three service booleans. Protocol 4 also sends the current page Media
+Session title, artist, and provider-hosted artwork URL when available. For a
+YouTube Music watch page, it also sends the page's 11-character public video ID.
+Apple Music adds bounds-checked MusicKit timing. It does not send a full URL or
+general browsing history. The Chrome Web Store classifies this limited handling
+under the **web history** and **website content** data categories because
+hostnames, tab titles, media identifiers, and now-playing metadata are involved.
 
 Each local report contains at most 64 tabs and has a serialized UTF-8 limit of
 32 KiB. Each title is truncated to at most 512 Unicode characters, and each
@@ -60,12 +60,12 @@ After Chune ID sends a report locally, the separate Chunes desktop companion
 controls downstream presence and artwork behavior. For enabled SoundCloud,
 YouTube Music, and Apple Music sources, Chunes sends listening presence to
 Discord. If the user enables optional album-art behavior in the companion,
-Chunes searches SoundCloud with title and artist for SoundCloud artwork, sends
-the public video ID to YouTube Music's web metadata endpoint for exact YouTube
-Music album art, or searches Apple's public iTunes Search API
-(itunes.apple.com/search, keyless) with title and artist for Apple Music
-artwork. Those network requests are made by Chunes, not directly by this
-extension, and are subject to the companion's controls and
+protocol 4 uses the provider-hosted artwork URL already transferred locally.
+Protocol 3 uses temporary legacy SoundCloud/YouTube Music fallbacks while the
+Store update is pending; Apple Music without page artwork can use Apple's public
+iTunes Search API (itunes.apple.com/search, keyless). Those network requests
+are made by Chunes, not directly by this extension, and are subject to the
+companion's controls and
 [Privacy Policy](https://github.com/getchunes/chunes/blob/main/PRIVACY.md).
 
 ## Settings and retention
@@ -74,8 +74,8 @@ The master, SoundCloud, YouTube Music, and Apple Music switches are stored in
 `chrome.storage.local`, never Chrome sync. They remain in the browser profile
 until changed, cleared through browser controls, or removed with the extension.
 
-Tab hostnames, titles, YouTube Music video IDs, connection results, and request
-payloads are not written to extension storage. They exist only transiently
+Tab hostnames, titles, current Media Session metadata, YouTube Music video IDs,
+connection results, and request payloads are not written to extension storage. They exist only transiently
 while the extension service worker prepares a report or keeps the latest status
 in memory. That memory is discarded when Chrome stops the worker. This policy
 covers Chune ID; the Chunes desktop application's own behavior is documented
@@ -105,8 +105,8 @@ purposes.
 The extension uses Manifest V3, contains no remote code or inline script, and
 sets `Content-Type: application/json` on loopback reports. It requests host
 access only for the local endpoint and the supported SoundCloud, YouTube, and
-Apple Music pages needed to read audible tab hostnames, titles, and a YouTube
-Music video ID.
+Apple Music pages needed to read audible tab hostnames, titles, current Media
+Session metadata, and a YouTube Music video ID.
 
 ## Your choices
 

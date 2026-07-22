@@ -227,6 +227,7 @@ if (globalThis.chrome?.runtime?.sendMessage) {
     incompatible: false,
     lastAttemptAt: "2026-07-18T12:00:00.000Z",
     omittedTabCount: 0,
+    protocolVersion: 4,
     settings: DEFAULT_SETTINGS,
     tabCount: 1,
     truncatedTitleCount: 0,

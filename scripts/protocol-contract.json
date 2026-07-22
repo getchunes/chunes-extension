@@ -10,10 +10,11 @@
     "payloadKeys": ["enabled", "services", "tabs"],
     "serviceKeys": ["appleMusic", "soundcloud", "youtubeMusic"],
     "tabKeys": ["host", "mediaId", "title"],
-    "appleTabPlaybackKeys": ["position", "duration", "playing", "sampledAt"]
+    "appleTabPlaybackKeys": ["position", "duration", "playing", "sampledAt"],
+    "pageMetadataKeys": ["title", "artist", "artwork"]
   },
   "response": {
     "markerHeader": "X-Chunes-Protocol",
-    "markerValue": "3"
+    "markerValue": "4"
   }
 }

@@ -18,6 +18,7 @@
   const CONFIGURE_POLL_LIMIT = 300;
   const HEARTBEAT_MS = 3000;
   const MAX_TITLE_CHARACTERS = 512;
+  const MAX_ARTWORK_URL_CHARACTERS = 2048;
 
   let player = null;
   let heartbeatTimer = null;
@@ -28,6 +29,22 @@
       : null;
   }
 
+  function readText(value) {
+    return typeof value === "string" ? value.trim().slice(0, MAX_TITLE_CHARACTERS) : "";
+  }
+
+  function readArtwork(value) {
+    if (typeof value !== "string" || value.length === 0 || value.length > MAX_ARTWORK_URL_CHARACTERS) {
+      return null;
+    }
+    try {
+      const url = new URL(value.replace(/\{w\}/g, "500").replace(/\{h\}/g, "500"));
+      return url.protocol === "https:" && url.hostname.endsWith(".mzstatic.com") ? url.href : null;
+    } catch {
+      return null;
+    }
+  }
+
   function postSnapshot() {
     if (!player) {
       return;
@@ -36,13 +53,15 @@
     let snapshot;
     try {
       const item = player.nowPlayingItem;
-      const title = item && typeof item.title === "string" ? item.title : "";
+      const title = readText(item?.title);
       snapshot = {
         channel: CHANNEL,
         position: readNumber(player.currentPlaybackTime),
         duration: readNumber(player.currentPlaybackDuration),
         playing: player.isPlaying === true,
-        title: title.slice(0, MAX_TITLE_CHARACTERS),
+        title,
+        artist: readText(item?.artistName),
+        artwork: readArtwork(item?.artworkURL),
         sampledAt: Date.now(),
       };
     } catch {

@@ -6,8 +6,9 @@ Companion Chrome extension for [Chunes](https://github.com/getchunes/chunes),
 the Windows app that shows supported music listening as Discord presence.
 
 Windows only tells Chunes that "your browser is playing something", never
-which site. Chune ID fills that gap by checking audible SoundCloud and YouTube
-tabs and reporting their hostname, title, and optional YouTube Music video ID
+which site. Chune ID fills that gap by checking audible SoundCloud, YouTube
+Music, and Apple Music tabs and reporting their hostname, title, current page
+Media Session metadata, and optional YouTube Music video ID
 to the Chunes app on this computer at `127.0.0.1:52846`.
 
 With it installed, Chunes can:
@@ -23,7 +24,7 @@ extension does not guarantee correct attribution in those cases.
 ## Requirements
 
 - Google Chrome 120 or a compatible Chromium browser with Manifest V3 support
-- Windows with [Chunes desktop](https://github.com/getchunes/chunes/releases/latest) running for protocol-3 presence reporting (Chunes 1.0.9 or newer)
+- Windows with [Chunes desktop](https://github.com/getchunes/chunes/releases/latest) running for protocol-4 presence reporting (Chunes 1.0.10 or newer). Chune ID retries protocol 3 for an older desktop.
 
 ## Install
 
@@ -75,7 +76,8 @@ refreshes, browser startup/installation, and a 30-second alarm. It sends an
       "mediaId": null,
       "title": "Example track title"
     }
-  ]
+  ],
+  "protocol": 4
 }
 ```
 
@@ -88,18 +90,20 @@ are considered first, disabled supported services second, and blocked regular
 YouTube last. A tab that does not fit is skipped so a later smaller tab can
 still be included; the popup reports omitted-tab and truncated-title counts.
 
-Chune ID shows the companion as connected only when a successful response
-contains `X-Chunes-Protocol: 3`. A response without that marker is treated as
-an incompatible desktop version.
+Chune ID sends protocol 4 with optional page metadata. If a desktop returns
+`400`, it retries the exact unmarked protocol 3 report once for compatibility.
+Successful protocol negotiation transitions are recorded in the service-worker
+console. Other response markers are treated as an incompatible desktop version.
 
 ## Permissions
 
 - `alarms` keeps desktop classification current while the popup is closed.
 - `storage` saves only the three local boolean settings.
-- Narrow host access for `127.0.0.1`, SoundCloud, and YouTube lets the worker contact Chunes and read URL/title only for supported audible hosts. The worker derives a public video ID from a YouTube Music watch URL but never reports a full URL.
+- Narrow host access for `127.0.0.1`, SoundCloud, and YouTube lets the worker contact Chunes and read URL/title and current Media Session metadata only for supported audible hosts. The worker derives a public video ID from a YouTube Music watch URL but never reports a full URL.
 
-Chune ID does not request the broad `tabs` permission, inject content scripts,
-or run remote code.
+Chune ID does not request the broad `tabs` permission or run remote code. Its
+packaged content scripts read current page metadata only on the supported music
+hosts.
 
 ## Privacy
 
@@ -122,8 +126,8 @@ The release scripts require only Node.js and Windows PowerShell 5.1 or newer:
 .\scripts\validate-package.ps1
 ```
 
-Packaging reads the manifest version and creates
-`dist/chune-id-1.0.2.zip`. The archive is built from an explicit allowlist;
+Packaging reads the manifest version and creates its matching `dist/chune-id-<version>.zip`.
+The archive is built from an explicit allowlist;
 store materials, source archives, CI files, and development scripts are not
 included.
 

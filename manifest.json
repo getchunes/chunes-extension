@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Chune ID",
-  "version": "1.0.6",
+  "version": "1.0.10",
   "minimum_chrome_version": "120",
   "description": "Identifies supported audible tabs for the Chunes desktop app on this computer.",
   "permissions": ["alarms", "scripting", "storage"],
@@ -30,6 +30,30 @@
       "js": ["apple-bridge.js"],
       "run_at": "document_idle",
       "world": "ISOLATED"
+    },
+    {
+      "matches": ["https://soundcloud.com/*", "https://www.soundcloud.com/*"],
+      "js": ["soundcloud-bridge.js"],
+      "run_at": "document_idle",
+      "world": "ISOLATED"
+    },
+    {
+      "matches": ["https://soundcloud.com/*", "https://www.soundcloud.com/*"],
+      "js": ["soundcloud-inject.js"],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://music.youtube.com/*"],
+      "js": ["youtube-music-bridge.js"],
+      "run_at": "document_idle",
+      "world": "ISOLATED"
+    },
+    {
+      "matches": ["https://music.youtube.com/*"],
+      "js": ["youtube-music-inject.js"],
+      "run_at": "document_idle",
+      "world": "MAIN"
     }
   ],
   "action": {
