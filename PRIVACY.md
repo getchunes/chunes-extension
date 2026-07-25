@@ -59,13 +59,11 @@ servers, or another external application service.
 After Chune ID sends a report locally, the separate Chunes desktop companion
 controls downstream presence and artwork behavior. For enabled SoundCloud,
 YouTube Music, and Apple Music sources, Chunes sends listening presence to
-Discord. If the user enables optional album-art behavior in the companion,
-protocol 4 uses the provider-hosted artwork URL already transferred locally.
-Protocol 3 uses temporary legacy SoundCloud/YouTube Music fallbacks while the
-Store update is pending; Apple Music without page artwork can use Apple's public
-iTunes Search API (itunes.apple.com/search, keyless). Those network requests
-are made by Chunes, not directly by this extension, and are subject to the
-companion's controls and
+Discord. If the user enables optional album-art behavior in the companion, it
+uses the provider-hosted artwork URL already transferred locally. Apple Music
+without page artwork can use Apple's public iTunes Search API
+(itunes.apple.com/search, keyless). Those network requests are made by Chunes,
+not directly by this extension, and are subject to the companion's controls and
 [Privacy Policy](https://github.com/getchunes/chunes/blob/main/PRIVACY.md).
 
 ## Settings and retention

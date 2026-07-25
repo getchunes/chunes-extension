@@ -109,7 +109,7 @@ if (manifest) {
 
   check(manifest.manifest_version === 3, "manifest_version must be 3");
   check(manifest.name === "Chune ID", "manifest name must remain Chune ID");
-  check(manifest.version === "1.0.11", "manifest version must remain 1.0.11");
+  check(manifest.version === "1.0.12", "manifest version must remain 1.0.12");
   check(
     manifest.minimum_chrome_version === "120",
     "minimum_chrome_version must be 120 for 30-second alarms",
@@ -237,6 +237,12 @@ const popupHtml = readFileSync(join(root, "popup.html"), "utf8");
 const expectedScriptTag = '<script src="popup.js" defer></script>';
 const scriptTagCount = popupHtml.toLowerCase().split("<script").length - 1;
 check(scriptTagCount === 1, "popup.html must have exactly one script tag");
+if (manifest) {
+  check(
+    popupHtml.includes(`<span class="version">v${manifest.version}</span>`),
+    "popup version must match the manifest version",
+  );
+}
 check(popupHtml.includes(expectedScriptTag), "popup must use only the packaged popup.js script");
 check(!/\son[a-z]+\s*=/i.test(popupHtml), "inline HTML event handlers are forbidden");
 check(!/<script[^>]+src=["']https?:/i.test(popupHtml), "remote scripts are forbidden");
@@ -318,8 +324,8 @@ check(
 check(
   backgroundSource.includes('const RESPONSE_PROTOCOL_HEADER = "X-Chunes-Protocol";') &&
     backgroundSource.includes("const CURRENT_PROTOCOL_VERSION = 4;") &&
-      backgroundSource.includes("const LEGACY_PROTOCOL_VERSION = 3;"),
-  "background must require the reviewed desktop response marker",
+    !backgroundSource.includes("LEGACY_PROTOCOL_VERSION"),
+  "background must require the reviewed desktop response marker as the only protocol",
 );
 check(
   backgroundSource.includes('url.searchParams.get("v")') &&
@@ -531,7 +537,6 @@ const normalizedPrivacyPolicy = privacyPolicy.replace(/\s+/g, " ");
 check(
   normalizedPrivacyPolicy.includes("sends listening presence to Discord") &&
     normalizedPrivacyPolicy.includes("provider-hosted artwork URL already transferred locally") &&
-    normalizedPrivacyPolicy.includes("Protocol 3 uses temporary legacy") &&
     normalizedPrivacyPolicy.includes("Apple Music") &&
     normalizedPrivacyPolicy.includes("itunes.apple.com/search") &&
     normalizedPrivacyPolicy.includes("getchunes/chunes/blob/main/PRIVACY.md"),

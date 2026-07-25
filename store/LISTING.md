@@ -43,8 +43,7 @@ master switch is the only way to stop tab queries and track reporting.
 Chune ID has no analytics, ads, accounts, or remote code. The extension itself
 directly contacts only Chunes at 127.0.0.1:52846. For enabled services, Chunes
 sends presence to Discord and uses provider-hosted artwork supplied locally by
-protocol 4. During the temporary protocol-3 compatibility window, Chunes may
-use its documented provider artwork fallbacks. See both privacy policies below.
+protocol 4. See both privacy policies below.
 
 Requires the Chunes Windows companion app. Chunes is available from:
 https://github.com/getchunes/chunes/releases/latest

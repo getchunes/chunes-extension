@@ -310,10 +310,10 @@ assert.deepEqual(queries[0], {
 });
 
 fetchHandler = async () => createResponse({ protocol: null });
-const legacyDesktopRefresh = await sendRuntimeMessage({ type: "refresh" });
-assert.equal(legacyDesktopRefresh.status.connected, false);
-assert.equal(legacyDesktopRefresh.status.incompatible, true);
-assert.match(legacyDesktopRefresh.status.error, /protocol 4 response required/);
+const unmarkedDesktopRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(unmarkedDesktopRefresh.status.connected, false);
+assert.equal(unmarkedDesktopRefresh.status.incompatible, true);
+assert.match(unmarkedDesktopRefresh.status.error, /protocol 4 response required/);
 
 fetchHandler = async () => createResponse({ protocol: "1" });
 const wrongProtocolRefresh = await sendRuntimeMessage({ type: "refresh" });
@@ -1176,31 +1176,22 @@ assert.equal(
   "page metadata must be rejected from unsupported senders",
 );
 
-const compatibilityPosts = [];
+const rejectedPosts = [];
 fetchHandler = async (_url, options) => {
-  const body = JSON.parse(options.body);
-  compatibilityPosts.push(body);
-  return body.protocol === 4
-    ? createResponse({ status: 400 })
-    : createResponse({ protocol: "3" });
+  rejectedPosts.push(JSON.parse(options.body));
+  return createResponse({ status: 400 });
 };
-const legacyFallbackRefresh = await sendRuntimeMessage({ type: "refresh" });
-assert.equal(legacyFallbackRefresh.status.connected, true);
+const rejectedRefresh = await sendRuntimeMessage({ type: "refresh" });
+assert.equal(rejectedRefresh.status.connected, false);
+assert.equal(rejectedRefresh.status.error, "Chunes returned HTTP 400.");
 assert.deepEqual(
-  compatibilityPosts.map((body) => body.protocol ?? 3),
-  [4, 3],
-  "a v4 rejection must retry once with the exact v3 report shape",
+  rejectedPosts.map((body) => body.protocol),
+  [4],
+  "a rejected report must surface the failure instead of retrying another protocol",
 );
 assert.ok(
-  !Object.hasOwn(compatibilityPosts[1], "protocol") &&
-    compatibilityPosts[1].tabs.every(
-      (tab) => !Object.hasOwn(tab, "metadata"),
-    ),
-  "the v3 retry must not leak v4-only fields",
-);
-assert.ok(
-  consoleLogs.some((entry) => entry.includes("protocol v3 (legacy fallback)")),
-  "protocol fallback must be visible in the service-worker console",
+  consoleLogs.some((entry) => entry.includes("protocol v4")),
+  "the negotiated protocol must be visible in the service-worker console",
 );
 fetchHandler = async () => createResponse();
 

@@ -8,7 +8,6 @@ const REQUEST_TIMEOUT_MS = 3000;
 const REQUEST_CONTENT_TYPE = "application/json";
 const RESPONSE_PROTOCOL_HEADER = "X-Chunes-Protocol";
 const CURRENT_PROTOCOL_VERSION = 4;
-const LEGACY_PROTOCOL_VERSION = 3;
 const MAX_REPORTED_TABS = 64;
 const MAX_TITLE_CHARACTERS = 512;
 const MAX_REQUEST_BYTES = 32 * 1024;
@@ -45,7 +44,7 @@ let activeReport;
 let queuedInteractiveReport;
 let backgroundReportPending = false;
 let identifyingRetryTimer;
-let lastNegotiatedProtocolVersion = null;
+let protocolConnectionLogged = false;
 let lastStatus = {
   connected: null,
   current: null,
@@ -222,7 +221,7 @@ function reportPriority(tab, settings) {
   return tab.source === "YouTube (blocked)" ? 2 : 1;
 }
 
-function buildReport(settings, classifiedTabs, protocolVersion = CURRENT_PROTOCOL_VERSION) {
+function buildReport(settings, classifiedTabs) {
   const payload = {
     enabled: settings.enabled,
     services: {
@@ -231,10 +230,8 @@ function buildReport(settings, classifiedTabs, protocolVersion = CURRENT_PROTOCO
       youtubeMusic: settings.youtubeMusic,
     },
     tabs: [],
+    protocol: CURRENT_PROTOCOL_VERSION,
   };
-  if (protocolVersion === CURRENT_PROTOCOL_VERSION) {
-    payload.protocol = CURRENT_PROTOCOL_VERSION;
-  }
   const prioritizedTabs = [...classifiedTabs].sort(
     (left, right) => reportPriority(left, settings) - reportPriority(right, settings),
   );
@@ -254,7 +251,7 @@ function buildReport(settings, classifiedTabs, protocolVersion = CURRENT_PROTOCO
       mediaId: reportedTab.mediaId,
       title: reportedTab.title,
     };
-    const metadata = protocolVersion === CURRENT_PROTOCOL_VERSION && freshPageMetadata(reportedTab);
+    const metadata = freshPageMetadata(reportedTab);
     if (metadata) {
       payloadTab.metadata = metadata;
     }
@@ -308,7 +305,7 @@ function displayTitle(tab, desktop) {
   return tab.title;
 }
 
-async function postReport(body, protocolVersion) {
+async function postReport(body) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -326,8 +323,10 @@ async function postReport(body, protocolVersion) {
     if (!response.ok) {
       throw new Error(`Chunes returned HTTP ${response.status}.`);
     }
-    if (response.headers.get(RESPONSE_PROTOCOL_HEADER) !== String(protocolVersion)) {
-      const error = new Error(`Chunes desktop is incompatible (protocol ${protocolVersion} response required).`);
+    if (response.headers.get(RESPONSE_PROTOCOL_HEADER) !== String(CURRENT_PROTOCOL_VERSION)) {
+      const error = new Error(
+        `Chunes desktop is incompatible (protocol ${CURRENT_PROTOCOL_VERSION} response required).`,
+      );
       error.name = "ChunesProtocolError";
       throw error;
     }
@@ -335,13 +334,12 @@ async function postReport(body, protocolVersion) {
       const data = await response.json();
       if (data && typeof data.track === "string" && data.track.trim()) {
         return {
-          protocolVersion,
           track: data.track.trim(),
           host: typeof data.host === "string" ? data.host : null,
         };
       }
     } catch {}
-    return { protocolVersion, track: null, host: null };
+    return { track: null, host: null };
   } finally {
     clearTimeout(timeout);
   }
@@ -362,10 +360,7 @@ async function performReport() {
     }
   }
 
-  const report = buildReport(
-    settings,
-    classifiedTabs,
-  );
+  const report = buildReport(settings, classifiedTabs);
   const { body, omittedTabCount, reportedTabs, truncatedTitleCount } = report;
   const supportedTabs = reportedTabs.filter(
     ({ source }) => source !== "YouTube (blocked)",
@@ -376,50 +371,28 @@ async function performReport() {
   let connected = false;
   let connectionError = null;
   let incompatible = false;
-  let protocolVersion = null;
 
   let desktop = null;
   try {
-    desktop = await postReport(body, CURRENT_PROTOCOL_VERSION);
-    protocolVersion = desktop.protocolVersion;
+    desktop = await postReport(body);
     connected = true;
   } catch (error) {
-    // A protocol 3 desktop rejects the explicit v4 marker. Retry only that
-    // validation failure with the exact legacy body, without page metadata.
-    if (error instanceof Error && error.message === "Chunes returned HTTP 400.") {
-      try {
-        desktop = await postReport(
-          buildReport(settings, classifiedTabs, LEGACY_PROTOCOL_VERSION).body,
-          LEGACY_PROTOCOL_VERSION,
-        );
-        protocolVersion = desktop.protocolVersion;
-        connected = true;
-      } catch (legacyError) {
-        error = legacyError;
-      }
-    }
-    if (!connected) {
-      if (error instanceof Error && error.name === "ChunesProtocolError") {
-        incompatible = true;
-        connectionError = error.message;
-      } else {
-        connectionError =
-          error instanceof Error && error.name === "AbortError"
-            ? "Chunes desktop did not respond in time."
-            : error instanceof Error && error.message.startsWith("Chunes returned HTTP")
-              ? error.message
-              : "Chunes desktop is not responding.";
-      }
+    if (error instanceof Error && error.name === "ChunesProtocolError") {
+      incompatible = true;
+      connectionError = error.message;
+    } else {
+      connectionError =
+        error instanceof Error && error.name === "AbortError"
+          ? "Chunes desktop did not respond in time."
+          : error instanceof Error && error.message.startsWith("Chunes returned HTTP")
+            ? error.message
+            : "Chunes desktop is not responding.";
     }
   }
 
-  if (connected && protocolVersion !== lastNegotiatedProtocolVersion) {
-    lastNegotiatedProtocolVersion = protocolVersion;
-    console.log(
-      `Chune ID connected using protocol v${protocolVersion}${
-        protocolVersion === LEGACY_PROTOCOL_VERSION ? " (legacy fallback)" : ""
-      }.`,
-    );
+  if (connected && !protocolConnectionLogged) {
+    protocolConnectionLogged = true;
+    console.log(`Chune ID connected using protocol v${CURRENT_PROTOCOL_VERSION}.`);
   }
 
   lastStatus = {
