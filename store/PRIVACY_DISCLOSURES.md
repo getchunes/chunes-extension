@@ -32,7 +32,7 @@ metadata, a validated YouTube Music video ID, and bounds-checked Apple Music
 MusicKit timing fields (playback position, duration, playing state, and sample
 time) only to the locally installed Chunes app using HTTP loopback at
 `127.0.0.1:52846`; it does not send them to the developer or persist them. For
-enabled sources, Chunes sends listening presence to Discord. Protocol 4 uses the
+enabled sources, Chunes sends listening presence to Discord. Protocol 5 uses the
 provider-hosted artwork already transferred locally. Those downstream requests
 are made by Chunes and are covered by the companion privacy policy. Four boolean
 extension settings persist only in `chrome.storage.local` until changed, browser

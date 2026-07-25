@@ -17,16 +17,18 @@ assert.deepEqual(protocolContract, {
       bodyBytes: 32768,
       tabs: 64,
       titleUnicodeCharacters: 512,
+      trackUrlCharacters: 2048,
     },
     payloadKeys: ["enabled", "services", "tabs"],
     serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
     tabKeys: ["host", "mediaId", "title"],
+    trackUrlKey: "trackUrl",
     appleTabPlaybackKeys: ["position", "duration", "playing", "sampledAt"],
     pageMetadataKeys: ["title", "artist", "artwork"],
   },
   response: {
     markerHeader: "X-Chunes-Protocol",
-    markerValue: "4",
+    markerValue: "5",
   },
 });
 const stored = {};
@@ -215,10 +217,12 @@ const runtimeProtocolContract = normalize(
           bodyBytes: MAX_REQUEST_BYTES,
           tabs: MAX_REPORTED_TABS,
           titleUnicodeCharacters: MAX_TITLE_CHARACTERS,
+          trackUrlCharacters: MAX_TRACK_URL_CHARACTERS,
         },
         payloadKeys: ["enabled", "services", "tabs"],
         serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
         tabKeys: ["host", "mediaId", "title"],
+        trackUrlKey: "trackUrl",
         appleTabPlaybackKeys: APPLE_PLAYBACK_KEYS,
         pageMetadataKeys: PAGE_METADATA_KEYS,
       },
@@ -282,17 +286,26 @@ assert.deepEqual(normalize(posts[0].options.headers), {
 assert.equal(posts[0].options.redirect, "error", "loopback fetch must reject redirects");
 assert.equal(
   posts[0].options.body,
-  '{"enabled":true,"services":{"appleMusic":true,"soundcloud":true,"youtubeMusic":true},"tabs":[{"host":"soundcloud.com","mediaId":null,"title":"Artist - SoundCloud track"},{"host":"music.youtube.com","mediaId":"YtMusic1234","title":"Artist - YouTube Music track"},{"host":"www.youtube.com","mediaId":null,"title":"Regular YouTube video"}],"protocol":4}',
+  '{"enabled":true,"services":{"appleMusic":true,"soundcloud":true,"youtubeMusic":true},"tabs":[{"host":"soundcloud.com","mediaId":null,"title":"Artist - SoundCloud track","trackUrl":"https://soundcloud.com/artist/track"},{"host":"music.youtube.com","mediaId":"YtMusic1234","title":"Artist - YouTube Music track","trackUrl":"https://music.youtube.com/watch?v=YtMusic1234"},{"host":"www.youtube.com","mediaId":null,"title":"Regular YouTube video"}],"protocol":5}',
   "POST body must use the exact reviewed payload shape and protocol keys",
 );
 assert.deepEqual(
   Object.keys(lastPostBody()), [...protocolContract.request.payloadKeys, "protocol"],
 );
-assert.equal(lastPostBody().protocol, 4);
+assert.equal(lastPostBody().protocol, 5);
 assert.deepEqual(Object.keys(lastPostBody().services), protocolContract.request.serviceKeys);
 assert.ok(
+  // A music tab adds its own address after the required keys; a blocked tab
+  // is reported without one.
   lastPostBody().tabs.every(
-    (tab) => JSON.stringify(Object.keys(tab)) === JSON.stringify(protocolContract.request.tabKeys),
+    (tab) =>
+      JSON.stringify(Object.keys(tab)) ===
+        JSON.stringify(protocolContract.request.tabKeys) ||
+      JSON.stringify(Object.keys(tab)) ===
+        JSON.stringify([
+          ...protocolContract.request.tabKeys,
+          protocolContract.request.trackUrlKey,
+        ]),
   ),
   "every tab must use the exact reviewed protocol keys",
 );
@@ -313,7 +326,7 @@ fetchHandler = async () => createResponse({ protocol: null });
 const unmarkedDesktopRefresh = await sendRuntimeMessage({ type: "refresh" });
 assert.equal(unmarkedDesktopRefresh.status.connected, false);
 assert.equal(unmarkedDesktopRefresh.status.incompatible, true);
-assert.match(unmarkedDesktopRefresh.status.error, /protocol 4 response required/);
+assert.match(unmarkedDesktopRefresh.status.error, /protocol 5 response required/);
 
 fetchHandler = async () => createResponse({ protocol: "1" });
 const wrongProtocolRefresh = await sendRuntimeMessage({ type: "refresh" });
@@ -356,7 +369,7 @@ assert.deepEqual(lastPostBody(), {
   enabled: false,
   services: { appleMusic: false, soundcloud: false, youtubeMusic: true },
   tabs: [],
-  protocol: 4,
+  protocol: 5,
 });
 
 await sendRuntimeMessage({ type: "refresh" });
@@ -469,6 +482,7 @@ assert.deepEqual(lastPostBody().tabs, [
     host: "music.apple.com",
     mediaId: null,
     title: "Album - Album by Artist - Apple Music",
+    trackUrl: "https://music.apple.com/us/album/album/12345",
   },
 ]);
 assert.equal(lastPostBody().services.appleMusic, true);
@@ -492,6 +506,7 @@ assert.deepEqual(lastPostBody().tabs, [
     host: "music.apple.com",
     mediaId: null,
     title: "Album - Album by Artist - Apple Music",
+    trackUrl: "https://music.apple.com/us/album/album/12345",
   },
 ]);
 const disabledAppleMusicStatus = notifications.at(-1).status;
@@ -1092,6 +1107,7 @@ assert.deepEqual(
       host: "music.apple.com",
       mediaId: null,
       title: "Album - Album by Artist - Apple Music",
+      trackUrl: "https://music.apple.com/us/album/album/12345",
       position: 100,
       duration: 207,
       playing: true,
@@ -1116,9 +1132,10 @@ assert.deepEqual(
       host: "music.apple.com",
       mediaId: null,
       title: "Album - Album by Artist - Apple Music",
+      trackUrl: "https://music.apple.com/us/album/album/12345",
     },
   ],
-  "an Apple tab without a stored sample must report plain tab keys only",
+  "an Apple tab without a stored sample must report its address and plain tab keys only",
 );
 
 queryResults = [
@@ -1151,6 +1168,7 @@ assert.deepEqual(lastPostBody().tabs, [
     host: "soundcloud.com",
     mediaId: null,
     title: "SoundCloud",
+    trackUrl: "https://soundcloud.com/artist/current-track",
     metadata: {
       title: "Current SoundCloud Track",
       artist: "Current Artist",
@@ -1186,11 +1204,11 @@ assert.equal(rejectedRefresh.status.connected, false);
 assert.equal(rejectedRefresh.status.error, "Chunes returned HTTP 400.");
 assert.deepEqual(
   rejectedPosts.map((body) => body.protocol),
-  [4],
+  [5],
   "a rejected report must surface the failure instead of retrying another protocol",
 );
 assert.ok(
-  consoleLogs.some((entry) => entry.includes("protocol v4")),
+  consoleLogs.some((entry) => entry.includes("protocol v5")),
   "the negotiated protocol must be visible in the service-worker console",
 );
 fetchHandler = async () => createResponse();

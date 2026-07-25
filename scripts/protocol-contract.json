@@ -5,16 +5,18 @@
     "limits": {
       "bodyBytes": 32768,
       "tabs": 64,
-      "titleUnicodeCharacters": 512
+      "titleUnicodeCharacters": 512,
+      "trackUrlCharacters": 2048
     },
     "payloadKeys": ["enabled", "services", "tabs"],
     "serviceKeys": ["appleMusic", "soundcloud", "youtubeMusic"],
     "tabKeys": ["host", "mediaId", "title"],
+    "trackUrlKey": "trackUrl",
     "appleTabPlaybackKeys": ["position", "duration", "playing", "sampledAt"],
     "pageMetadataKeys": ["title", "artist", "artwork"]
   },
   "response": {
     "markerHeader": "X-Chunes-Protocol",
-    "markerValue": "4"
+    "markerValue": "5"
   }
 }

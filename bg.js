@@ -7,7 +7,7 @@ const IDENTIFYING_RETRY_MS = 2000;
 const REQUEST_TIMEOUT_MS = 3000;
 const REQUEST_CONTENT_TYPE = "application/json";
 const RESPONSE_PROTOCOL_HEADER = "X-Chunes-Protocol";
-const CURRENT_PROTOCOL_VERSION = 4;
+const CURRENT_PROTOCOL_VERSION = 5;
 const MAX_REPORTED_TABS = 64;
 const MAX_TITLE_CHARACTERS = 512;
 const MAX_REQUEST_BYTES = 32 * 1024;
@@ -17,6 +17,7 @@ const PAGE_METADATA_KEYS = ["title", "artist", "artwork"];
 const APPLE_SEEK_THRESHOLD_SECONDS = 2.5;
 const MAX_PLAYBACK_SECONDS = 24 * 60 * 60;
 const MAX_ARTWORK_URL_CHARACTERS = 2048;
+const MAX_TRACK_URL_CHARACTERS = 2048;
 const PAGE_METADATA_MAX_AGE_MS = 10_000;
 const textEncoder = new TextEncoder();
 const DEFAULT_SETTINGS = Object.freeze({
@@ -130,6 +131,24 @@ async function readSettings() {
   return settings;
 }
 
+const TRACK_URL_SOURCES = new Set(["Apple Music", "SoundCloud", "YouTube Music"]);
+
+// The address the desktop can offer as "play this track", rebuilt from the
+// parts the app needs rather than passed through: no credentials, and no
+// fragment, which the player never needs and the page can put anything in.
+// Only the music services get one; a blocked tab is reported so the desktop
+// knows something else is audible, and its address would say nothing useful.
+function reportableTrackUrl(url, source) {
+  if (!TRACK_URL_SOURCES.has(source)) {
+    return null;
+  }
+  if (url.protocol !== "https:" || url.username || url.password) {
+    return null;
+  }
+  const trackUrl = `https://${url.hostname.toLowerCase()}${url.pathname}${url.search}`;
+  return trackUrl.length <= MAX_TRACK_URL_CHARACTERS ? trackUrl : null;
+}
+
 async function queryClassifiedAudibleTabs() {
   const browserTabs = await chrome.tabs.query({
     audible: true,
@@ -161,6 +180,7 @@ async function queryClassifiedAudibleTabs() {
           source,
           tabId: typeof tab.id === "number" ? tab.id : null,
           title: typeof tab.title === "string" ? tab.title : "",
+          trackUrl: reportableTrackUrl(url, source),
         },
       ];
     } catch {
@@ -251,6 +271,9 @@ function buildReport(settings, classifiedTabs) {
       mediaId: reportedTab.mediaId,
       title: reportedTab.title,
     };
+    if (reportedTab.trackUrl) {
+      payloadTab.trackUrl = reportedTab.trackUrl;
+    }
     const metadata = freshPageMetadata(reportedTab);
     if (metadata) {
       payloadTab.metadata = metadata;
