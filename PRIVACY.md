@@ -12,21 +12,28 @@ When **Chune ID enabled** is on, the extension queries currently audible tabs
 only on its declared SoundCloud, YouTube, and Apple Music hosts. For matching
 tabs, it reads:
 
-- the tab URL, used in memory only to determine the hostname; and
+- the tab URL, used to determine the hostname and, for a music tab, to build the
+  address Chunes can offer as a link to the playing track; and
 - the tab title, which can contain website content such as a track, artist, or video title.
 
 For each matching tab, the extension sends its hostname and title alongside the
-master and three service booleans. Protocol 4 also sends the current page Media
+master and three service booleans. Protocol 5 also sends the current page Media
 Session title, artist, and provider-hosted artwork URL when available. For a
 YouTube Music watch page, it also sends the page's 11-character public video ID.
-Apple Music adds bounds-checked MusicKit timing. It does not send a full URL or
-general browsing history. The Chrome Web Store classifies this limited handling
-under the **web history** and **website content** data categories because
-hostnames, tab titles, media identifiers, and now-playing metadata are involved.
+Apple Music adds bounds-checked MusicKit timing. For a SoundCloud, YouTube
+Music, or Apple Music tab, protocol 5 sends that tab's own address so the
+desktop app can offer a button that opens the track; the address is rebuilt as
+host, path, and query only, without credentials or the fragment, and a blocked
+regular YouTube tab never has its address sent. The extension sends no address
+for any other tab and no general browsing history. The Chrome Web Store
+classifies this limited handling under the **web history** and **website
+content** data categories because hostnames, tab titles, addresses, media
+identifiers, and now-playing metadata are involved.
 
 Each local report contains at most 64 tabs and has a serialized UTF-8 limit of
-32 KiB. Each title is truncated to at most 512 Unicode characters, and each
-YouTube Music video ID is validated before reporting. Within those limits,
+32 KiB. Each title is truncated to at most 512 Unicode characters, each reported
+address is limited to 2048 characters, and each YouTube Music video ID is
+validated before reporting. Within those limits,
 enabled SoundCloud, YouTube Music, and Apple Music tabs are considered first,
 then disabled supported services, then blocked regular YouTube tabs. Tabs that
 do not fit are omitted, and the popup shows omitted-tab and truncated-title

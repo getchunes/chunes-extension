@@ -65,5 +65,5 @@ The master and all service settings default to on and persist only in
 `scripting` permission is limited to injecting the reviewed metadata readers on
 install or update. Chune ID contains no remote code and directly contacts only
 local Chunes. For enabled services, Chunes sends presence to Discord and uses
-the provider-hosted artwork supplied by protocol 4 under companion controls.
+the provider-hosted artwork supplied by protocol 5 under companion controls.
 Companion privacy: https://github.com/getchunes/chunes/blob/main/PRIVACY.md

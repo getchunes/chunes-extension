@@ -78,16 +78,18 @@ if (protocolContract) {
             bodyBytes: 32768,
             tabs: 64,
             titleUnicodeCharacters: 512,
+            trackUrlCharacters: 2048,
           },
           payloadKeys: ["enabled", "services", "tabs"],
           serviceKeys: ["appleMusic", "soundcloud", "youtubeMusic"],
           tabKeys: ["host", "mediaId", "title"],
+          trackUrlKey: "trackUrl",
           appleTabPlaybackKeys: ["position", "duration", "playing", "sampledAt"],
           pageMetadataKeys: ["title", "artist", "artwork"],
         },
         response: {
           markerHeader: "X-Chunes-Protocol",
-          markerValue: "4",
+          markerValue: "5",
         },
       }),
     "scripts/protocol-contract.json must exactly match the reviewed protocol",
@@ -323,9 +325,16 @@ check(
 );
 check(
   backgroundSource.includes('const RESPONSE_PROTOCOL_HEADER = "X-Chunes-Protocol";') &&
-    backgroundSource.includes("const CURRENT_PROTOCOL_VERSION = 4;") &&
+    backgroundSource.includes("const CURRENT_PROTOCOL_VERSION = 5;") &&
     !backgroundSource.includes("LEGACY_PROTOCOL_VERSION"),
   "background must require the reviewed desktop response marker as the only protocol",
+);
+check(
+  backgroundSource.includes("const MAX_TRACK_URL_CHARACTERS = 2048;") &&
+    backgroundSource.includes('url.protocol !== "https:" || url.username || url.password') &&
+    backgroundSource.includes("TRACK_URL_SOURCES.has(source)") &&
+    backgroundSource.includes("${url.hostname.toLowerCase()}${url.pathname}${url.search}"),
+  "background must report only a credential-free https address of a music tab, without its fragment",
 );
 check(
   backgroundSource.includes('url.searchParams.get("v")') &&
