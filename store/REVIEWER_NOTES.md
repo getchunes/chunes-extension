@@ -57,15 +57,13 @@ install or update. Apple timing fields are bounds-checked and accepted only for
 Reports contain at most 64 tabs, each title is limited to 512 Unicode
 characters, and the serialized UTF-8 body is at most 32 KiB. The popup shows
 connected only when a successful desktop response includes
-`X-Chunes-Protocol: 4`. An older protocol-3 desktop receives one exact fallback
-report without page metadata; a response without the required marker is shown as
-an incompatible desktop version.
+`X-Chunes-Protocol: 4`. A response without the required marker is shown as an
+incompatible desktop version.
 
 The master and all service settings default to on and persist only in
 `chrome.storage.local`. Host permissions replace broad `tabs` access, and the
 `scripting` permission is limited to injecting the reviewed metadata readers on
 install or update. Chune ID contains no remote code and directly contacts only
 local Chunes. For enabled services, Chunes sends presence to Discord and uses
-the provider-hosted artwork supplied by protocol 4. Protocol 3 retains temporary
-documented artwork fallbacks under companion controls. Companion
-privacy: https://github.com/getchunes/chunes/blob/main/PRIVACY.md
+the provider-hosted artwork supplied by protocol 4 under companion controls.
+Companion privacy: https://github.com/getchunes/chunes/blob/main/PRIVACY.md

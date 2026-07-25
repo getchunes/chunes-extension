@@ -15,11 +15,11 @@ copy:
 - Permissions limited to `alarms`, `storage`, `scripting`, loopback, SoundCloud, YouTube, and Apple Music hosts
 - SoundCloud, YouTube Music, and Apple Music each use an isolated-world bridge and MAIN-world reader for current page metadata. Apple Music additionally reads MusicKit timing. The `scripting` permission injects those existing pairs into already-open matching tabs on install or update.
 - `application/json` POSTs to `http://127.0.0.1:52846/tabs`
-- Protocol 4 adds explicit top-level `protocol: 4`; an older protocol-3 desktop receives one exact fallback report without page metadata
+- Every report carries the explicit top-level `protocol: 4` marker
 - At most 64 tabs, 512 Unicode characters per title, and 32 KiB per UTF-8 body
 - Tab payloads contain `host`, `mediaId`, and `title`. Protocol 4 can additionally carry validated current page `metadata` with title, artist, and provider-hosted artwork. `mediaId` is a validated YouTube Music video ID or `null`; it is always `null` for Apple Music.
 - Apple Music tabs may additionally carry `position`, `duration`, `playing`, and `sampledAt` MusicKit timing fields, each bounds-checked; no other host may send them
-- Connection accepts `X-Chunes-Protocol: 4`, with an isolated protocol-3 compatibility fallback for older desktop releases
+- Connection accepts `X-Chunes-Protocol: 4` only; any other marker is reported as an incompatible desktop release
 - Service switches control publishing while local track classification continues for suppression
 - Master off skips tab queries and sends an empty paused heartbeat
 

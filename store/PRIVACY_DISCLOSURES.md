@@ -33,12 +33,10 @@ MusicKit timing fields (playback position, duration, playing state, and sample
 time) only to the locally installed Chunes app using HTTP loopback at
 `127.0.0.1:52846`; it does not send them to the developer or persist them. For
 enabled sources, Chunes sends listening presence to Discord. Protocol 4 uses the
-provider-hosted artwork already transferred locally. Protocol 3 retains temporary
-documented provider artwork fallbacks while the Store update rolls out. Those
-downstream requests are made by Chunes and are covered by the companion privacy
-policy. Four boolean extension settings persist only in
-`chrome.storage.local` until changed, browser storage is cleared, or the
-extension is removed.
+provider-hosted artwork already transferred locally. Those downstream requests
+are made by Chunes and are covered by the companion privacy policy. Four boolean
+extension settings persist only in `chrome.storage.local` until changed, browser
+storage is cleared, or the extension is removed.
 
 Each loopback report is limited to 64 tabs, 512 Unicode characters per title,
 validated 11-character YouTube Music video IDs, and a 32 KiB serialized UTF-8

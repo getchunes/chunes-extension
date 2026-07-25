@@ -24,7 +24,7 @@ extension does not guarantee correct attribution in those cases.
 ## Requirements
 
 - Google Chrome 120 or a compatible Chromium browser with Manifest V3 support
-- Windows with [Chunes desktop](https://github.com/getchunes/chunes/releases/latest) running for protocol-4 presence reporting (Chunes 1.0.10 or newer). Chune ID retries protocol 3 for an older desktop.
+- Windows with [Chunes desktop](https://github.com/getchunes/chunes/releases/latest) running for protocol-4 presence reporting (Chunes 1.0.10 or newer). Older desktop versions are not supported.
 
 ## Install
 
@@ -90,10 +90,10 @@ are considered first, disabled supported services second, and blocked regular
 YouTube last. A tab that does not fit is skipped so a later smaller tab can
 still be included; the popup reports omitted-tab and truncated-title counts.
 
-Chune ID sends protocol 4 with optional page metadata. If a desktop returns
-`400`, it retries the exact unmarked protocol 3 report once for compatibility.
-Successful protocol negotiation transitions are recorded in the service-worker
-console. Other response markers are treated as an incompatible desktop version.
+Chune ID sends protocol 4 with optional page metadata, and a desktop that
+rejects it is reported as an error rather than retried with an older shape. The
+first successful connection is recorded in the service-worker console. Other
+response markers are treated as an incompatible desktop version.
 
 ## Permissions
 
